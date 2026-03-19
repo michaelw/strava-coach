@@ -1,6 +1,7 @@
 ---
 title: Privacy Policy
 permalink: /privacy-policy/
+layout: page
 ---
 
 Last updated: 2026-03-19
