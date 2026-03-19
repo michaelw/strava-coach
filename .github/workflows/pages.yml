@@ -33,10 +33,11 @@ jobs:
           bundler-cache: true
 
       - name: Setup Pages
+        id: pages
         uses: actions/configure-pages@v5
 
       - name: Build with Jekyll
-        run: bundle exec jekyll build --destination ./_site
+        run: bundle exec jekyll build --destination ./_site --baseurl "${{ steps.pages.outputs.base_path }}"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
