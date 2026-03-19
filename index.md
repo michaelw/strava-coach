@@ -12,12 +12,26 @@ This site publishes the public assets for the open-source `Strava Coach` Custom 
 - [Privacy Policy](./privacy-policy/)
 - OpenAPI specs are published as direct file URLs under `./actions/`
 
-## Repository Layout
+## OpenAPI Spec Links
 
-- `system_prompt.md` contains the GPT instructions and behavior rules in the repository
-- `privacy_policy.md` contains the public privacy policy
-- `actions/` contains published OpenAPI definitions for GPT Actions
-- `data/` contains repository knowledge files
-- `assets/` contains repository images and branding assets
+{% assign pages_origin = 'https://michaelw.github.io/strava-coach' %}
+{% if site.github and site.github.owner_name and site.github.repository_name %}
+	{% assign pages_origin = 'https://' | append: site.github.owner_name | append: '.github.io/' | append: site.github.repository_name %}
+{% endif %}
 
-Push this repository to GitHub and enable GitHub Pages to make these documents publicly accessible.
+{% assign action_files = site.static_files | sort: 'path' %}
+{% assign has_specs = false %}
+{% for file in action_files %}
+	{% if file.path contains '/actions/' %}
+		{% if file.name contains '.openapi.' %}
+			{% if file.extname == '.yaml' or file.extname == '.yml' or file.extname == '.json' %}
+				{% assign has_specs = true %}
+				{% assign spec_url = pages_origin | append: file.path %}
+- [{{ spec_url }}]({{ spec_url }})
+			{% endif %}
+		{% endif %}
+	{% endif %}
+{% endfor %}
+{% unless has_specs %}
+- No OpenAPI spec files found in `actions/`.
+{% endunless %}
