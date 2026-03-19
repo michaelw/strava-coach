@@ -131,6 +131,8 @@ You can preview the GitHub Pages site locally inside a devcontainer.
 bundle exec jekyll serve --host 0.0.0.0 --livereload
 ```
 
+Optional: this repository includes a VS Code task named `Jekyll Serve` in `.vscode/tasks.json` that can auto-start on folder open (if automatic tasks are allowed).
+
 Then open the forwarded site at `http://127.0.0.1:4000/`.
 
 The devcontainer forwards:

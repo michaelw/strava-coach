@@ -10,4 +10,5 @@ _site/
 .bundle/
 vendor/bundle/
 .idea/
-.vscode/
+.vscode/*
+!.vscode/tasks.json
