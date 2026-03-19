@@ -110,15 +110,6 @@ The checks cover:
 - merge-conflict markers and whitespace issues
 - basic repository hygiene for docs-first projects
 
-## Local Setup
-
-```bash
-git init
-python3 -m pip install pre-commit
-pre-commit install
-pre-commit run --all-files
-```
-
 ## Local Pages Preview
 
 You can preview the GitHub Pages site locally inside a devcontainer.
@@ -139,6 +130,15 @@ The devcontainer forwards:
 
 - `4000` for the Jekyll site
 - `35729` for LiveReload
+
+## Local Setup
+
+```bash
+git init
+python3 -m pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
 ## Publishing with GitHub Pages
 
