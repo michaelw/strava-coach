@@ -1,0 +1,43 @@
+{
+  "name": "strava-coach-pages",
+  "image": "mcr.microsoft.com/devcontainers/ruby:3.4",
+  "forwardPorts": [4000, 35729],
+  "portsAttributes": {
+    "4000": {
+      "label": "Jekyll",
+      "onAutoForward": "openBrowser"
+    },
+    "35729": {
+      "label": "LiveReload",
+      "onAutoForward": "silent"
+    }
+  },
+  "mounts": [
+    "source=apt-cache-${devcontainerId},target=/var/cache/apt,type=volume",
+    "source=apt-lists-${devcontainerId},target=/var/lib/apt/lists,type=volume"
+  ],
+  "runArgs": [
+    "--security-opt=seccomp=unconfined",
+    "--security-opt=apparmor=unconfined"
+  ],
+  "postCreateCommand": "bash scripts/devcontainer-post-create.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "files.exclude": {
+          "**/.bundle": true,
+          "**/vendor": true
+        }
+      },
+      "extensions": [
+        "DavidAnson.vscode-markdownlint",
+        "GitHub.vscode-github-actions",
+        "GitHub.vscode-pull-request-github",
+        "Shopify.ruby-lsp",
+        "redhat.vscode-yaml",
+        "streetsidesoftware.code-spell-checker",
+        "yzhang.markdown-all-in-one"
+      ]
+    }
+  }
+}

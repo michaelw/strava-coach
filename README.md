@@ -119,6 +119,25 @@ pre-commit install
 pre-commit run --all-files
 ```
 
+## Local Pages Preview
+
+You can preview the GitHub Pages site locally inside a devcontainer.
+
+1. Open the repository in a devcontainer.
+2. Let the container run `scripts/devcontainer-post-create.sh` on first start. This installs the Ruby gems and `pre-commit`, then sets up the Git hook.
+3. Start the Jekyll server:
+
+```bash
+bundle exec jekyll serve --host 0.0.0.0 --livereload
+```
+
+Then open the forwarded site at `http://127.0.0.1:4000/`.
+
+The devcontainer forwards:
+
+- `4000` for the Jekyll site
+- `35729` for LiveReload
+
 ## Publishing with GitHub Pages
 
 1. Push this repository to GitHub.
