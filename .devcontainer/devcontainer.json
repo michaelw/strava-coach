@@ -23,6 +23,14 @@
   "postCreateCommand": "bash scripts/devcontainer-post-create.sh",
   "customizations": {
     "vscode": {
+      "mcp": {
+        "servers": {
+          "github": {
+            "type": "http",
+            "url": "https://api.githubcopilot.com/mcp/"
+          }
+        }
+      },
       "settings": {
         "files.exclude": {
           "**/.bundle": true,
