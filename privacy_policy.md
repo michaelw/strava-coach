@@ -3,8 +3,6 @@ title: Privacy Policy
 permalink: /privacy-policy/
 ---
 
-# Privacy Policy
-
 Last updated: 2026-03-19
 
 This privacy policy applies to the public `Strava Coach` Custom GPT project and its related repository assets.

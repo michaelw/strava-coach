@@ -83,6 +83,18 @@ Best practices:
 - keep scopes and endpoints minimal
 - separate experimental and production specs if needed
 
+## Published OpenAPI Specs
+
+When GitHub Pages is enabled, import GPT Action specs in ChatGPT using the published file URLs, not repository blob URLs.
+
+Published-link pattern:
+
+- `https://<github-username>.github.io/<repo-name>/actions/<spec-file-name>`
+
+Current specs in this repository:
+
+- `strava.openapi.yaml` -> `https://<github-username>.github.io/<repo-name>/actions/strava.openapi.yaml`
+
 ## CI/CD and Quality Checks
 
 This repo is set up with standard lightweight automation for documentation-heavy GPT assets:
