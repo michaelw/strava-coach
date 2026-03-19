@@ -1,6 +1,15 @@
 ---
 ---
-@import "minima";
+@use "minima";
+
+// Compatibility shims for themes still using deprecated color helper names.
+@function lighten($color-value, $amount) {
+  @return color.adjust($color-value, $lightness: $amount);
+}
+
+@function darken($color-value, $amount) {
+  @return color.adjust($color-value, $lightness: -$amount);
+}
 
 .site-title {
   display: inline-flex;

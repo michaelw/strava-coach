@@ -4,6 +4,8 @@ theme: minima
 markdown: kramdown
 plugins:
   - jekyll-feed
+sass:
+  quiet_deps: true
 exclude:
   - system_prompt.md
   - actions/README.md
