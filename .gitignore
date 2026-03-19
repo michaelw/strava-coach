@@ -1,0 +1,11 @@
+.DS_Store
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.jekyll-cache/
+_site/
+.idea/
+.vscode/

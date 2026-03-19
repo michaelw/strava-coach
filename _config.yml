@@ -1,0 +1,6 @@
+title: Strava Coach
+description: Public assets for an open-source Strava Custom GPT project
+theme: minima
+markdown: kramdown
+plugins:
+  - jekyll-feed

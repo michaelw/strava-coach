@@ -1,0 +1,284 @@
+openapi: 3.1.0
+info:
+  title: Strava API
+  description: OpenAPI specification for accessing Strava fitness data via OAuth2.
+  version: v1.0.0
+servers:
+  - url: https://www.strava.com/api/v3
+paths:
+  /athlete:
+    get:
+      operationId: getAuthenticatedAthlete
+      summary: Get the currently authenticated athlete
+      security:
+        - stravaOAuth:
+            - profile:read_all
+      responses:
+        "200":
+          description: Returns the authenticated athlete
+          content:
+            application/json:
+              schema:
+                "": '#/components/schemas/Athlete'
+  /athlete/zones:
+    get:
+      operationId: getAthleteZones
+      summary: Get athlete heart rate and power zones
+      security:
+        - stravaOAuth:
+            - profile:read_all
+      responses:
+        "200":
+          description: Athlete zones data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+  /athletes/{id}/stats:
+    get:
+      operationId: getAthleteStats
+      summary: Get aggregate athlete stats
+      security:
+        - stravaOAuth:
+            - profile:read_all
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Aggregate stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+  /athlete/activities:
+    get:
+      operationId: getAthleteActivities
+      summary: List activities of the authenticated athlete
+      security:
+        - stravaOAuth:
+            - activity:read_all
+      parameters:
+        - name: before
+          in: query
+          schema:
+            type: integer
+        - name: after
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "": '#/components/schemas/ActivitySummary'
+  /activities/{id}:
+    get:
+      operationId: getActivityById
+      summary: Get activity details
+      security:
+        - stravaOAuth:
+            - activity:read_all
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: include_all_efforts
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Activity details
+          content:
+            application/json:
+              schema:
+                "": '#/components/schemas/ActivityDetail'
+  /activities/{id}/streams:
+    get:
+      operationId: getActivityStreams
+      summary: Get time-series streams (HR, Power, Cadence, GPS)
+      security:
+        - stravaOAuth:
+            - activity:read_all
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: keys
+          in: query
+          schema:
+            type: string
+        - name: key_by_type
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Activity streams
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+                additionalProperties:
+                  type: object
+                  properties:
+                    original_size:
+                      type: integer
+                    resolution:
+                      type: string
+                    series_type:
+                      type: string
+                    data:
+                      type: array
+                      items:
+                        type: number
+  /activities/{id}/zones:
+    get:
+      operationId: getActivityZones
+      summary: Get activity zone distribution
+      security:
+        - stravaOAuth:
+            - activity:read_all
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Zone distribution
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+components:
+  schemas:
+    Athlete:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        firstname:
+          type: string
+        lastname:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        sex:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ActivitySummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        distance:
+          type: number
+        moving_time:
+          type: integer
+        elapsed_time:
+          type: integer
+        type:
+          type: string
+        sport_type:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        visibility:
+          type: string
+          enum:
+            - everyone
+            - followers_only
+            - only_me
+    ActivityDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        distance:
+          type: number
+        moving_time:
+          type: integer
+        elapsed_time:
+          type: integer
+        total_elevation_gain:
+          type: number
+        type:
+          type: string
+        sport_type:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        visibility:
+          type: string
+          enum:
+            - everyone
+            - followers_only
+            - only_me
+        device_watts:
+          type: boolean
+        average_watts:
+          type: number
+        weighted_average_watts:
+          type: number
+        average_heartrate:
+          type: number
+        max_heartrate:
+          type: number
+  securitySchemes:
+    stravaOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://www.strava.com/oauth/authorize
+          tokenUrl: https://www.strava.com/oauth/token
+          scopes:
+            read: Read public segments and routes
+            read_all: Read all segments and routes
+            profile:read_all: Read full athlete profile
+            activity:read: Read public activities
+            activity:read_all: Read all activities, including private
+            activity:write: Write activities
+security:
+  - stravaOAuth:
+      - activity:read_all
+      - profile:read_all
