@@ -9,6 +9,7 @@ This site publishes the public assets for the open-source `Strava Coach` Custom 
 ## Public Documents
 
 - [README](./README.md)
+- [ChatGPT Setup](./setup/chatgpt/)
 - [Privacy Policy](./privacy-policy/)
 - OpenAPI specs are published as direct file URLs under `./actions/`
 

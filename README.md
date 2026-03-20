@@ -95,6 +95,22 @@ Current specs in this repository:
 
 - `strava.openapi.yaml` -> `https://<github-username>.github.io/<repo-name>/actions/strava.openapi.yaml`
 
+## ChatGPT And Strava OAuth Setup
+
+The detailed setup guide for the ChatGPT configuration lives in [setup-chatgpt.md](./setup-chatgpt.md) and can also be published on the docs site at:
+
+- `https://<github-username>.github.io/<repo-name>/setup/chatgpt/`
+
+That page documents:
+
+- creating the Strava app and saving the client ID and secret
+- using `chat.openai.com` as the authorization callback URL
+- creating the GPT Strava action
+- selecting `OAuth` authentication
+- setting the Strava authorization and token URLs
+- using the scope `read,read_all,activity:read,profile:read_all`
+- keeping the token exchange method as `Default (POST request)`
+
 ## CI/CD and Quality Checks
 
 This repo is set up with standard lightweight automation for documentation-heavy GPT assets:
