@@ -1,7 +1,10 @@
 {
   "name": "strava-coach-pages",
   "image": "mcr.microsoft.com/devcontainers/ruby:3.4",
-  "forwardPorts": [4000, 35729],
+  "forwardPorts": [
+    4000,
+    35729
+  ],
   "portsAttributes": {
     "4000": {
       "label": "Jekyll",
@@ -35,7 +38,8 @@
         "files.exclude": {
           "**/.bundle": true,
           "**/vendor": true
-        }
+        },
+        "task.allowAutomaticTasks": "on"
       },
       "extensions": [
         "DavidAnson.vscode-markdownlint",

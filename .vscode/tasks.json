@@ -4,7 +4,7 @@
     {
       "label": "Jekyll Serve",
       "type": "shell",
-      "command": "bundle exec jekyll serve --host 0.0.0.0 --livereload",
+      "command": "if [ -f /.dockerenv ]; then bundle exec jekyll serve --host 0.0.0.0 --livereload; else echo 'Skipping Jekyll Serve auto-start (not running inside a devcontainer).'; fi",
       "isBackground": true,
       "problemMatcher": {
         "owner": "jekyll",
@@ -18,11 +18,8 @@
           "endsPattern": "^.*Server running.*$"
         }
       },
-      "runOptions": {
-        "runOn": "folderOpen"
-      },
       "presentation": {
-        "reveal": "always",
+        "reveal": "never",
         "panel": "dedicated",
         "focus": false
       }
