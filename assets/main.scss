@@ -76,3 +76,41 @@
   color: rgba(0, 0, 0, 0.68);
   text-align: center;
 }
+
+.prompt-copy-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.prompt-copy-button {
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.9rem;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.prompt-copy-button:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.prompt-copy-status {
+  font-size: 0.85rem;
+  color: rgba(0, 0, 0, 0.68);
+}
+
+.prompt-copy-textarea {
+  width: 100%;
+  min-height: 14rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  background: #fff;
+  margin-bottom: 1.1rem;
+}

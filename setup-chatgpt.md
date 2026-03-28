@@ -38,7 +38,17 @@ If this site is published through GitHub Pages, the action spec URL is typically
 
 [{{ '/actions/strava.openapi.yaml' | absolute_url }}]({{ '/actions/strava.openapi.yaml' | relative_url }})
 
-## 3. Configure OAuth Authentication
+## 3. Add the System Prompt to GPT Instructions
+
+In the GPT builder, open `Configure` and paste the Strava Coach system prompt into the GPT's `Instructions` field.
+
+- Use the copy-ready prompt from [System Prompt]({{ '/system-prompt/' | relative_url }})
+- Paste it into `Instructions` exactly as written
+- Save the GPT configuration after pasting
+
+Without this step, the action may connect successfully but the coaching behavior will not match this project.
+
+## 4. Configure OAuth Authentication
 
 Choose `OAuth` as the authentication type and enter these values exactly:
 
@@ -59,7 +69,18 @@ Choose `OAuth` as the authentication type and enter these values exactly:
   <figcaption>ChatGPT action OAuth configuration</figcaption>
 </figure>
 
-## 4. Final Check
+## 5. Keep Instructions Updated Later
+
+When `system_prompt.md` changes in this repository, update your Custom GPT:
+
+1. Re-open your GPT in ChatGPT.
+2. Copy the latest prompt again from [System Prompt]({{ '/system-prompt/' | relative_url }}).
+3. Replace the full `Instructions` text.
+4. Save and republish the GPT.
+
+Tip: treat `system_prompt.md` as the source of truth and do a full replace rather than partial edits.
+
+## 6. Final Check
 
 Before saving, confirm:
 
@@ -68,5 +89,6 @@ Before saving, confirm:
 - the client ID and secret come from the same Strava app
 - the OAuth scope string matches exactly
 - the token exchange method remains `Default (POST request)`
+- the latest system prompt text is pasted into GPT `Instructions`
 
 Once saved, ChatGPT should prompt the user to connect their Strava account during action authentication.
