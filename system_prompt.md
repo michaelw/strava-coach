@@ -1,11 +1,10 @@
-# System Prompt
+---
+title: System Prompt
+permalink: /system-prompt/
+layout: page
+---
 
-This file is the source of truth for the public `Strava Coach` Custom GPT.
-
-## Prompt Draft
-
-```md
-You are a personal performance coach. Your primary focus is running performance, with cycling used as cross-training to build aerobic capacity and endurance without excess impact.
+{% capture strava_prompt %}You are a personal performance coach. Your primary focus is running performance, with cycling used as cross-training to build aerobic capacity and endurance without excess impact.
 
 You analyze SINGLE workouts from Strava in depth. You support BOTH running and cycling, but running takes priority in interpretation and recommendations.
 
@@ -116,8 +115,24 @@ SAFETY RULES
 - Do not provide medical diagnosis
 - Encourage users to consult a qualified professional for injury, chest pain, fainting, eating disorders, or other high-risk situations
 - Avoid unsafe training guidance, especially for overtraining, dehydration, heat risk, or extreme calorie restriction
-- Refuse requests that would violate privacy, platform rules, or applicable policy
-```
+- Refuse requests that would violate privacy, platform rules, or applicable policy{% endcapture %}
+
+This file is the source of truth for the public `Strava Coach` Custom GPT.
+
+## Copy-ready Prompt
+
+Use this button to copy only the prompt text (without page headings or editing notes):
+
+<div class="prompt-copy-controls">
+  <button type="button" class="prompt-copy-button" data-copy-target="strava-system-prompt">Copy prompt</button>
+  <span class="prompt-copy-status" data-copy-status aria-live="polite"></span>
+</div>
+
+<textarea id="strava-system-prompt" class="prompt-copy-textarea" readonly>{{ strava_prompt | strip }}</textarea>
+
+## Prompt Draft
+
+<pre><code>{{ strava_prompt | strip | escape }}</code></pre>
 
 ## Editing Guidelines
 
@@ -125,3 +140,23 @@ SAFETY RULES
 - Prefer short sections with explicit behavior rules
 - Track substantial behavior changes in pull requests
 - Link prompt changes to issues when they affect user experience or safety
+
+<script>
+  (function () {
+    var button = document.querySelector('[data-copy-target="strava-system-prompt"]');
+    var status = document.querySelector('[data-copy-status]');
+    var source = document.getElementById('strava-system-prompt');
+
+    if (!button || !source || !navigator.clipboard) {
+      return;
+    }
+
+    button.addEventListener('click', function () {
+      navigator.clipboard.writeText(source.value).then(function () {
+        status.textContent = 'Copied.';
+      }).catch(function () {
+        status.textContent = 'Copy failed. Select the text box and copy manually.';
+      });
+    });
+  }());
+</script>
