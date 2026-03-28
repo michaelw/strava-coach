@@ -4,7 +4,16 @@ permalink: /system-prompt/
 layout: page
 ---
 
-{% capture strava_prompt %}You are a personal performance coach. Your primary focus is running performance, with cycling used as cross-training to build aerobic capacity and endurance without excess impact.
+This file is the source of truth for the public `Strava Coach` Custom GPT.
+
+## Copy-ready Prompt
+
+Use the copy icon in the top-right corner of the prompt block to copy prompt text.
+
+## Prompt Draft
+
+```md
+You are a personal performance coach. Your primary focus is running performance, with cycling used as cross-training to build aerobic capacity and endurance without excess impact.
 
 You analyze SINGLE workouts from Strava in depth. You support BOTH running and cycling, but running takes priority in interpretation and recommendations.
 
@@ -115,24 +124,8 @@ SAFETY RULES
 - Do not provide medical diagnosis
 - Encourage users to consult a qualified professional for injury, chest pain, fainting, eating disorders, or other high-risk situations
 - Avoid unsafe training guidance, especially for overtraining, dehydration, heat risk, or extreme calorie restriction
-- Refuse requests that would violate privacy, platform rules, or applicable policy{% endcapture %}
-
-This file is the source of truth for the public `Strava Coach` Custom GPT.
-
-## Copy-ready Prompt
-
-Use this button to copy only the prompt text (without page headings or editing notes):
-
-<div class="prompt-copy-controls">
-  <button type="button" class="prompt-copy-button" data-copy-target="strava-system-prompt">Copy prompt</button>
-  <span class="prompt-copy-status" data-copy-status aria-live="polite"></span>
-</div>
-
-<textarea id="strava-system-prompt" class="prompt-copy-textarea" readonly>{{ strava_prompt | strip }}</textarea>
-
-## Prompt Draft
-
-<pre><code>{{ strava_prompt | strip | escape }}</code></pre>
+- Refuse requests that would violate privacy, platform rules, or applicable policy
+```
 
 ## Editing Guidelines
 
@@ -143,19 +136,61 @@ Use this button to copy only the prompt text (without page headings or editing n
 
 <script>
   (function () {
-    var button = document.querySelector('[data-copy-target="strava-system-prompt"]');
-    var status = document.querySelector('[data-copy-status]');
-    var source = document.getElementById('strava-system-prompt');
+    var promptBlock = document.querySelector('#prompt-draft + .highlighter-rouge');
+    var promptCode = promptBlock && promptBlock.querySelector('code');
+    var container;
+    var button;
+    var toast;
+    var hideToastTimer;
 
-    if (!button || !source || !navigator.clipboard) {
+    if (!navigator.clipboard || !promptBlock || !promptCode) {
       return;
     }
 
+    promptBlock.classList.add('prompt-copy-code');
+
+    container = promptBlock.parentElement;
+    if (!container.classList.contains('prompt-copy-container')) {
+      container = document.createElement('div');
+      container.className = 'prompt-copy-container';
+      promptBlock.parentElement.insertBefore(container, promptBlock);
+      container.appendChild(promptBlock);
+    }
+
+    button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'prompt-copy-icon-button';
+    button.setAttribute('aria-label', 'Copy prompt text');
+    button.setAttribute('title', 'Copy prompt');
+    button.innerHTML = '<span aria-hidden="true">📋</span>';
+
+    toast = document.createElement('span');
+    toast.className = 'prompt-copy-toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.textContent = 'Copied!';
+
+    container.insertBefore(button, promptBlock);
+    container.insertBefore(toast, promptBlock);
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('prompt-copy-toast--visible');
+
+      if (hideToastTimer) {
+        window.clearTimeout(hideToastTimer);
+      }
+
+      hideToastTimer = window.setTimeout(function () {
+        toast.classList.remove('prompt-copy-toast--visible');
+      }, 1400);
+    }
+
     button.addEventListener('click', function () {
-      navigator.clipboard.writeText(source.value).then(function () {
-        status.textContent = 'Copied.';
+      navigator.clipboard.writeText(promptCode.textContent || '').then(function () {
+        showToast('Copied!');
       }).catch(function () {
-        status.textContent = 'Copy failed. Select the text box and copy manually.';
+        showToast('Copy failed');
       });
     });
   }());
