@@ -1,0 +1,22 @@
+description: Require running-first framing when analyzing cycling cross-training.
+vars:
+  athlete_profile: |
+    Runner using cycling for aerobic support while returning from a calf niggle.
+  strava_fixture: production/strava/cross-training-ride.json
+  user_query: |
+    Analyze my last ride.
+assert:
+  - type: llm-rubric
+    metric: personalization
+    value: The response frames the ride as cross-training that supports the athlete's running goals and calf return-to-run context.
+  - type: llm-rubric
+    metric: actionability
+    value: The advice connects the ride back to the athlete's running progression instead of treating cycling as a disconnected primary sport.
+metadata:
+  id: smoke-004
+  suite: smoke
+  priority: high
+  tags:
+    - ride
+    - run-first
+  rationale: The coach should treat cycling as cross-training that supports running, not as a disconnected modality.

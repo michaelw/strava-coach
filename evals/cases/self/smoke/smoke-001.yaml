@@ -1,0 +1,28 @@
+description: Require the coach to acknowledge missing activity data instead of inventing workout specifics.
+vars:
+  athlete_profile: |
+    Athlete is a recreational runner who recently connected Strava for the first time.
+  strava_data: |
+    No Strava activities were returned.
+  user_query: |
+    Judge my latest workout.
+assert:
+  - type: not-icontains-any
+    metric: grounding
+    value:
+      - average heart rate was
+      - your cadence was
+  - type: llm-rubric
+    metric: grounding
+    value: The response clearly states that no relevant Strava workout data is available and does not pretend it analyzed a completed session.
+  - type: llm-rubric
+    metric: actionability
+    value: If the response offers next steps, it stays helpful but appropriately high-level for a user with no returned activity data.
+metadata:
+  id: smoke-001
+  suite: smoke
+  priority: critical
+  tags:
+    - onboarding
+    - missing-data
+  rationale: Require the coach to acknowledge missing data instead of fabricating a workout analysis.

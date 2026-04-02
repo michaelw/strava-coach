@@ -1,0 +1,28 @@
+description: Require return-to-run framing for cycling guidance during injury management.
+vars:
+  athlete_profile: |
+    Runner using bike sessions during a return-to-run protocol after calf tightness.
+  strava_fixture: production/strava/cross-training-ride.json
+  user_query: |
+    What should I do after this ride?
+assert:
+  - type: icontains-all
+    metric: personalization
+    value:
+      - return-to-run
+      - running
+  - type: not-icontains-any
+    metric: personalization
+    value:
+      - replace running permanently
+  - type: llm-rubric
+    metric: actionability
+    value: The follow-up advice uses the ride to support the athlete's cautious return to running rather than replacing the run plan outright.
+metadata:
+  id: personalization-003
+  suite: personalization
+  priority: normal
+  tags:
+    - cycling
+    - injury-management
+  rationale: The coach should connect cycling advice to the athlete's run-return context.

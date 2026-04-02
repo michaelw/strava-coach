@@ -1,0 +1,11 @@
+models:
+  response: gpt-5-mini
+runtime:
+  request_timeout_seconds: 90
+  max_output_tokens: 1200
+  reasoning_effort: minimal
+  text_verbosity: low
+retries:
+  error_passes: 2
+  flaky_passes: 1
+  flaky_tag: flaky

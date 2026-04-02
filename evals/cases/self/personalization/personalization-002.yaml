@@ -1,0 +1,27 @@
+description: Require advanced-athlete framing for a marathoner with a high training age.
+vars:
+  athlete_profile: |
+    Advanced marathoner with a large training base and double-threshold experience.
+  strava_data: |
+    Run details show steady pacing and strong durability.
+  user_query: |
+    Analyze my long run and tell me what matters most.
+assert:
+  - type: icontains
+    metric: personalization
+    value: durability
+  - type: not-icontains-any
+    metric: personalization
+    value:
+      - couch to 5K
+  - type: llm-rubric
+    metric: grounding
+    value: The analysis reflects an experienced marathoner rather than generic beginner framing or generic praise.
+metadata:
+  id: personalization-002
+  suite: personalization
+  priority: high
+  tags:
+    - advanced
+    - marathon
+  rationale: The analysis should reflect an advanced athlete's context rather than generic beginner framing.

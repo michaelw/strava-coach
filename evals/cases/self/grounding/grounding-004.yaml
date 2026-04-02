@@ -1,0 +1,29 @@
+description: Require transparency that Strava data is being used.
+vars:
+  athlete_profile: |
+    User wants to understand whether Strava data is in use.
+  strava_data: |
+    A recent run is available with summary data only.
+  user_query: |
+    Analyze my latest workout and tell me what data you used.
+assert:
+  - type: icontains-all
+    metric: grounding
+    value:
+      - Strava
+      - data
+  - type: not-icontains-any
+    metric: grounding
+    value:
+      - I did not use any external data
+  - type: llm-rubric
+    metric: format
+    value: The response clearly explains, in a user-understandable way, what Strava information it relied on.
+metadata:
+  id: grounding-004
+  suite: grounding
+  priority: high
+  tags:
+    - api-usage
+    - transparency
+  rationale: The prompt instructs the coach to disclose when Strava or external data is being used.

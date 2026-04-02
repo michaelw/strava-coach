@@ -1,0 +1,21 @@
+{
+  "fixture_id": "private-notes-review",
+  "captured_at": "2026-03-30T00:00:00Z",
+  "sanitizer_version": "v1",
+  "source": {
+    "captured": false,
+    "note": "Illustrative conversation fixture showing the tracked shape produced by gpt_capture.",
+    "type": "gpt"
+  },
+  "prompt": "Go deeper on yesterday's session.",
+  "conversation": [
+    {
+      "role": "user",
+      "content": "Go deeper on yesterday's session."
+    },
+    {
+      "role": "assistant",
+      "content": "I can go deeper if the activity details are already available."
+    }
+  ]
+}

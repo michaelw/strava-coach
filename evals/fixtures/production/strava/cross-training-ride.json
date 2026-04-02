@@ -1,0 +1,96 @@
+{
+  "fixture_id": "cross-training-ride",
+  "captured_at": "2026-03-30T00:00:00Z",
+  "sanitizer_version": "v1",
+  "source": {
+    "captured": false,
+    "note": "Production-shaped sample fixture matching Strava API response shapes.",
+    "type": "strava"
+  },
+  "requests": [
+    {
+      "endpoint": "GET /athlete",
+      "response": {
+        "id": "[redacted]",
+        "firstname": "[redacted]",
+        "resource_state": "[redacted]",
+        "sex": "F"
+      }
+    },
+    {
+      "endpoint": "GET /athlete/activities?per_page=5",
+      "response": [
+        {
+          "distance": 42600,
+          "elapsed_time": 5220,
+          "id": "[redacted]",
+          "moving_time": 5010,
+          "name": "Aerobic Support Ride",
+          "sport_type": "Ride",
+          "start_date_local": "2026-03-29T09:10:00Z"
+        },
+        {
+          "distance": 9800,
+          "elapsed_time": 3180,
+          "id": "[redacted]",
+          "moving_time": 3040,
+          "name": "Return-to-run Easy Run",
+          "sport_type": "Run",
+          "start_date_local": "2026-03-27T07:05:00Z"
+        }
+      ]
+    },
+    {
+      "endpoint": "GET /activities/[redacted]",
+      "response": {
+        "average_heartrate": 138,
+        "average_watts": 168,
+        "description": "Kept this aerobic to support marathon build while calf settles down.",
+        "distance": 42600,
+        "elapsed_time": 5220,
+        "id": "[redacted]",
+        "moving_time": 5010,
+        "name": "Aerobic Support Ride",
+        "sport_type": "Ride",
+        "start_date_local": "2026-03-29T09:10:00Z"
+      }
+    },
+    {
+      "endpoint": "GET /activities/[redacted]/streams?keys=time,distance,latlng,altitude,velocity_smooth,heartrate,cadence,watts,temp&key_by_type=true",
+      "response": {
+        "distance": {
+          "data": [
+            0,
+            14000,
+            28000,
+            42600
+          ]
+        },
+        "heartrate": {
+          "data": [
+            126,
+            136,
+            141,
+            138
+          ]
+        },
+        "time": {
+          "data": [
+            0,
+            1680,
+            3360,
+            5010
+          ]
+        },
+        "watts": {
+          "data": [
+            154,
+            169,
+            172,
+            165
+          ]
+        }
+      }
+    }
+  ]
+}

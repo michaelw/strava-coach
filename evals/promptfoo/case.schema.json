@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://strava-coach/evals/promptfoo/case.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "vars", "assert", "metadata"],
+  "properties": {
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vars": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["athlete_profile", "user_query"],
+      "properties": {
+        "athlete_profile": {
+          "type": "string"
+        },
+        "user_query": {
+          "type": "string"
+        },
+        "strava_data": {
+          "type": "string"
+        },
+        "strava_fixture": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        },
+        "conversation_fixture": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path"],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": ["strava_data"]
+        },
+        {
+          "required": ["strava_fixture"]
+        }
+      ]
+    },
+    "assert": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metric": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {},
+          "threshold": {
+            "type": "number"
+          },
+          "weight": {
+            "type": "number"
+          },
+          "transform": {
+            "type": "string"
+          },
+          "contextTransform": {
+            "type": "string"
+          },
+          "rubricPrompt": {},
+          "provider": {},
+          "config": {}
+        },
+        "additionalProperties": true
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "suite", "priority", "tags"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suite": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+description: Require strict date matching instead of silently substituting another activity.
+vars:
+  athlete_profile: |
+    Athlete prefers structured running feedback and asked about a specific day.
+  strava_data: |
+    Activities:
+    - 2026-03-25 Run "Lunch Run"
+    - 2026-03-27 Run "Tempo Session"
+  user_query: |
+    Analyze my run from March 25.
+assert:
+  - type: llm-rubric
+    metric: grounding
+    value: The response focuses on the March 25 run the user asked about and does not substitute a different workout. Briefly offering to analyze another run later is acceptable as long as the March 25 analysis remains the core answer.
+  - type: llm-rubric
+    metric: actionability
+    value: The response gives useful guidance that clearly remains centered on the requested March 25 run. High-level guidance is acceptable if the available activity summary is sparse, as long as the answer does not drift into another workout or generic filler unrelated to March 25.
+metadata:
+  id: smoke-002
+  suite: smoke
+  priority: critical
+  tags:
+    - date-filtering
+    - run
+  rationale: The prompt should enforce strict date matching and avoid silently substituting a different workout.

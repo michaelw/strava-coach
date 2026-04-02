@@ -1,0 +1,25 @@
+description: Require the coach to say there is no Monday match instead of substituting another activity.
+vars:
+  athlete_profile: |
+    Athlete wants precise analysis for a missed weekday session.
+  strava_data: |
+    Activities:
+    - 2026-03-22 Run
+    - 2026-03-24 Ride
+  user_query: |
+    Deep dive on my Monday workout.
+assert:
+  - type: llm-rubric
+    metric: grounding
+    value: The response correctly explains that no Monday workout matches the request and does not silently substitute another listed activity.
+  - type: llm-rubric
+    metric: format
+    value: The response makes the mismatch clear and easy to follow instead of burying it in vague wording.
+metadata:
+  id: grounding-002
+  suite: grounding
+  priority: high
+  tags:
+    - date-scope
+    - substitution
+  rationale: When the requested date has no matching activity, the coach should not quietly substitute another session.
