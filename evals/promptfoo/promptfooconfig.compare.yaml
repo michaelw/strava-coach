@@ -1,0 +1,21 @@
+description: Strava Coach baseline comparison evals
+prompts:
+  - file://prompts.cjs:candidatePrompt
+  - file://prompts.cjs:baselinePrompt
+providers:
+  - id: openai:responses:gpt-5-mini
+    config:
+      max_output_tokens: 1200
+      reasoning_effort: minimal
+      passthrough:
+        reasoning:
+          effort: minimal
+        text:
+          format:
+            type: text
+          verbosity: low
+tests:
+  - file://../cases/compare/**/*.yaml
+evaluateOptions:
+  maxConcurrency: 4
+  timeoutMs: 90000

@@ -1,0 +1,317 @@
+name: Prompt Eval
+
+on:
+  pull_request:
+    paths:
+      - "system_prompt.md"
+      - "evals/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Taskfile.yml"
+      - ".github/workflows/prompt-eval.yml"
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "system_prompt.md"
+      - "evals/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Taskfile.yml"
+      - ".github/workflows/prompt-eval.yml"
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-cases:
+    name: Validate Promptfoo Cases
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: "3.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Set up repo tooling
+        run: task setup
+
+      - name: Validate cases
+        run: task eval:validate
+
+  test-fast:
+    name: Fast Promptfoo Tests
+    runs-on: ubuntu-latest
+    needs: validate-cases
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: "3.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Set up repo tooling
+        run: task setup
+
+      - name: Run fast Promptfoo tests
+        run: task test
+
+  eval-smoke:
+    name: Eval Smoke
+    runs-on: ubuntu-latest
+    needs:
+      - validate-cases
+      - test-fast
+    env:
+      PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke
+      PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: "3.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Set up repo tooling
+        run: task setup
+
+      - name: Run smoke eval
+        id: smoke_eval
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: task eval:smoke
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-eval-smoke
+          path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
+
+      - name: Fail on smoke eval
+        if: steps.smoke_eval.outcome == 'failure'
+        run: exit 1
+
+  eval-targeted:
+    name: Eval Targeted
+    runs-on: ubuntu-latest
+    needs:
+      - validate-cases
+      - test-fast
+    env:
+      PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-targeted
+      PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-targeted
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: "3.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Set up repo tooling
+        run: task setup
+
+      - name: Detect suites
+        id: suites
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            RANGE="$BASE_SHA $HEAD_SHA"
+          else
+            RANGE="$BEFORE_SHA $AFTER_SHA"
+          fi
+          CHANGED="$(git diff --name-only $RANGE -- evals/cases | awk -F/ '/^evals\/cases\// {print $4}' | sort -u)"
+          if [ -z "$CHANGED" ]; then
+            CHANGED="smoke"
+          fi
+          {
+            echo "list<<EOF"
+            echo "$CHANGED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run targeted eval
+        id: targeted_eval
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          SUITES="$(printf '%s\n' "${{ steps.suites.outputs.list }}" | awk 'NF' | sort -u | xargs)"
+          if [ -z "$SUITES" ]; then
+            SUITES="smoke"
+          elif ! printf '%s\n' "$SUITES" | tr ' ' '\n' | grep -qx smoke; then
+            SUITES="smoke $SUITES"
+          fi
+          mkdir -p "$PROMPT_EVAL_OUTPUT_DIR"
+          for SUITE in $SUITES; do
+            PROMPT_EVAL_OUTPUT_PREFIX="self.$SUITE" task eval:self -- --filter-metadata suite="$SUITE"
+            if [ -d "evals/cases/compare/$SUITE" ]; then
+              PROMPT_EVAL_OUTPUT_PREFIX="compare.$SUITE" task eval:compare -- --filter-metadata suite="$SUITE"
+            fi
+          done
+          node evals/promptfoo/promptfoo_summary.cjs --artifact-dir "$PROMPT_EVAL_OUTPUT_DIR"
+
+      - name: Upload targeted artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-eval-targeted
+          path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
+
+      - name: Fail on targeted eval
+        if: steps.targeted_eval.outcome == 'failure'
+        run: exit 1
+
+  publish-summary:
+    name: Publish Summary
+    runs-on: ubuntu-latest
+    needs:
+      - eval-smoke
+      - eval-targeted
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Download summary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: prompt-eval-targeted
+          path: evals/reports/targeted
+
+      - name: Create sticky PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("evals/reports/targeted/summary.md", "utf8");
+            const header = "<!-- prompt-eval-summary -->";
+            const fullBody = `${header}\n${body}`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((comment) => comment.body && comment.body.includes(header));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: fullBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: fullBody,
+              });
+            }
+
+  nightly-full:
+    name: Nightly Full
+    runs-on: ubuntu-latest
+    needs: validate-cases
+    env:
+      PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-full
+      PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-full
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Task
+        uses: go-task/setup-task@v1
+        with:
+          version: "3.x"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Set up repo tooling
+        run: task setup
+
+      - name: Run full eval
+        id: full_eval
+        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: task eval:full
+
+      - name: Upload nightly artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-eval-full
+          path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
+
+      - name: Fail on nightly eval
+        if: steps.full_eval.outcome == 'failure'
+        run: exit 1

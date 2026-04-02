@@ -32,3 +32,11 @@ repos:
     rev: 0.33.2
     hooks:
       - id: check-github-workflows
+
+  - repo: local
+    hooks:
+      - id: validate-prompt-eval-cases
+        name: Validate prompt eval cases
+        entry: task eval:validate
+        language: system
+        pass_filenames: false

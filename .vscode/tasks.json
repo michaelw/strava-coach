@@ -2,24 +2,56 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Jekyll Serve",
+      "label": "Hugo Serve",
       "type": "shell",
-      "command": "if [ -f /.dockerenv ]; then bundle exec jekyll serve --host 0.0.0.0 --livereload; else echo 'Skipping Jekyll Serve auto-start (not running inside a devcontainer).'; fi",
+      "command": "if [ -f /.dockerenv ]; then task serve; else echo 'Skipping Hugo Serve auto-start (not running inside a devcontainer).'; fi",
       "isBackground": true,
       "problemMatcher": {
-        "owner": "jekyll",
+        "owner": "hugo",
         "pattern": {
           "regexp": "^.*$",
           "message": 1
         },
         "background": {
           "activeOnStart": true,
-          "beginsPattern": "^.*Auto-regeneration.*$",
-          "endsPattern": "^.*Server running.*$"
+          "beginsPattern": "^.*(Start building sites|Watching for changes).*$",
+          "endsPattern": "^.*Web Server is available at.*$"
         }
       },
       "presentation": {
         "reveal": "never",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "Check",
+      "type": "shell",
+      "command": "task check",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "Verify",
+      "type": "shell",
+      "command": "task verify",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "Prompt Eval Smoke",
+      "type": "shell",
+      "command": "task eval:smoke",
+      "presentation": {
+        "reveal": "always",
         "panel": "dedicated",
         "focus": false
       }
