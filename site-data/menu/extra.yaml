@@ -1,0 +1,7 @@
+header:
+  - name: GitHub repository
+    ref: https://github.com/michaelw/strava-coach
+    external: true
+    icon: gdoc_github
+    rel: external noopener noreferrer
+    weight: 10

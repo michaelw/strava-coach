@@ -1,7 +1,5 @@
 ---
 title: ChatGPT Setup
-permalink: /setup/chatgpt/
-layout: page
 ---
 
 This guide covers the ChatGPT-side configuration for the `Strava Coach` GPT and the matching OAuth app setup in Strava.
@@ -17,7 +15,7 @@ In the Strava developer settings, create a new API application and record the ge
 
 <figure class="doc-figure doc-figure--wide">
   <img
-    src="{{ '/assets/strava-app-setup.png' | relative_url }}"
+    src="../../assets/strava-app-setup.png"
     alt="Strava API application setup screenshot"
   >
   <figcaption>Strava API application settings</figcaption>
@@ -36,13 +34,15 @@ Inside the GPT builder:
 
 If this site is published through GitHub Pages, the action spec URL is typically:
 
-[{{ '/actions/strava.openapi.yaml' | absolute_url }}]({{ '/actions/strava.openapi.yaml' | relative_url }})
+- `https://<github-username>.github.io/<repo-name>/actions/strava.openapi.yaml`
+
+For this repository, the published spec is available at [`../../actions/strava.openapi.yaml`](../../actions/strava.openapi.yaml).
 
 ## 3. Add the System Prompt to GPT Instructions
 
 In the GPT builder, open `Configure` and paste the Strava Coach system prompt into the GPT's `Instructions` field.
 
-- Use the copy-ready prompt from [System Prompt]({{ '/system-prompt/' | relative_url }})
+- Use the copy-ready prompt from [System Prompt](../../system-prompt/)
 - Paste it into `Instructions` exactly as written
 - Save the GPT configuration after pasting
 
@@ -63,7 +63,7 @@ Choose `OAuth` as the authentication type and enter these values exactly:
 
 <figure class="doc-figure doc-figure--medium">
   <img
-    src="{{ '/assets/chatgpt-action-oauth-setup.png' | relative_url }}"
+    src="../../assets/chatgpt-action-oauth-setup.png"
     alt="ChatGPT action OAuth setup screenshot"
   >
   <figcaption>ChatGPT action OAuth configuration</figcaption>
@@ -71,10 +71,10 @@ Choose `OAuth` as the authentication type and enter these values exactly:
 
 ## 5. Keep Instructions Updated Later
 
-When `system_prompt.md` changes in this repository, update your Custom GPT:
+When [`system_prompt.md`](https://github.com/michaelw/strava-coach/blob/main/system_prompt.md) changes in this repository, update your Custom GPT:
 
 1. Re-open your GPT in ChatGPT.
-2. Copy the latest prompt again from [System Prompt]({{ '/system-prompt/' | relative_url }}).
+2. Copy the latest prompt again from [System Prompt](../../system-prompt/).
 3. Replace the full `Instructions` text.
 4. Save and republish the GPT.
 

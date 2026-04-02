@@ -1,0 +1,21 @@
+main:
+  - name: Overview
+    ref: /
+    icon: gdoc_home
+    weight: 10
+  - name: ChatGPT Setup
+    ref: /setup/chatgpt
+    icon: gdoc_bookmark
+    weight: 20
+  - name: Privacy Policy
+    ref: /privacy-policy
+    icon: gdoc_shield
+    weight: 30
+  - name: System Prompt
+    ref: /system-prompt
+    icon: gdoc_code
+    weight: 40
+  - name: Prompt Evals
+    ref: /prompt-evals
+    icon: gdoc_check_circle_outline
+    weight: 50
