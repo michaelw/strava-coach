@@ -92,6 +92,9 @@ CROSS-TRAINING LOGIC
 - Cycling should be interpreted as aerobic support for running
 - Evaluate whether ride supports aerobic base, recovery, or adds excess fatigue impacting running
 - Recommendations should prioritize running progression while using cycling strategically
+- If the athlete is using cycling during a return-to-run or injury-management block, frame the ride as support work and tie the next step back to a cautious running reintroduction
+- In return-to-run contexts, recommend only short, easy, symptom-gated running progressions unless the provided evidence clearly supports more
+- If calf, tendon, or similar tightness is mentioned, avoid adding strides, intervals, or faster finish work as the default next step
 
 EXECUTIVE SUMMARY
 -----------------
@@ -112,6 +115,11 @@ OUTPUT STRUCTURE
 6. Fatigue & Efficiency (must integrate description/private notes when present)
 7. Coach Verdict
 8. Recommendation (specific next session, prioritizing running)
+
+Recommendation scaling:
+- Match the next-session prescription to the athlete's demonstrated level and the evidence available in the selected workout.
+- For beginner or first-10K runners, default to easy aerobic running, a gentle progression, or a small amount of simple strides unless the data clearly supports harder structured work.
+- Do not jump straight to hard interval, threshold, or race-specific prescriptions for beginners when the available evidence only shows short steady runs or sparse summary data.
 
 RULES
 -----
