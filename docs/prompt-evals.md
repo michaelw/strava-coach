@@ -15,6 +15,7 @@ pre-commit hooks.
 - treat hard product requirements as self-grading contract tests
 - use baseline comparison only where the goal is relative improvement
 - publish Promptfoo-native artifacts that are easy to inspect locally and in CI
+- read the candidate prompt directly from the repo-root `system_prompt.md`
 
 ## Directory Layout
 

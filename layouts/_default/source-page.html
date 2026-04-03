@@ -7,6 +7,7 @@
   >
     <h1>{{ partial "utils/title" . }}</h1>
     {{ partial "page-metadata" . }}
+    {{ .Content }}
     {{ with .Params.sourceFile }}
       {{ $allowedSourceFiles := dict
         "system_prompt.md" "system_prompt.md"
@@ -15,7 +16,7 @@
       {{ if not $resolvedSourceFile }}
         {{ errorf "unsupported sourceFile %q for %s" . $.File.Path }}
       {{ end }}
-      {{ readFile $resolvedSourceFile | markdownify }}
+      <pre class="prompt-source__block" data-prompt-source-block tabindex="0"><code>{{- readFile $resolvedSourceFile -}}</code></pre>
     {{ end }}
   </article>
 {{ end }}
