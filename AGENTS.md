@@ -69,6 +69,8 @@ runtime code.
 
 ## Change Hygiene
 
+- When asked to implement a GitHub issue, start by linking the issue and
+  printing its title before beginning the implementation work.
 - If a PR addresses one or more GitHub issues, mention the affected issue numbers
   in the relevant commit messages as well as in the PR context.
 - Use a plain reference like `#42` when the commit is part of the issue's work,
