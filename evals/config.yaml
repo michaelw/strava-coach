@@ -9,3 +9,6 @@ retries:
   error_passes: 2
   flaky_passes: 1
   flaky_tag: flaky
+baseline:
+  version: 1.0.0
+  url: https://github.com/michaelw/strava-coach/releases/download/prompt-baseline-v1.0.0/strava-coach-system-prompt.md

@@ -1,13 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 const { resolveConversationContext, resolveStravaContext } = require('./fixtures.cjs');
+const { readResolvedBaselinePromptPath } = require('../prompts/baseline.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CANDIDATE_PROMPT_PATH = path.join(ROOT, 'system_prompt.md');
-const BASELINE_PROMPT_PATH = path.join(ROOT, 'evals', 'prompts', 'system_prompt.baseline.md');
 
 function readPromptText(filePath) {
   return fs.readFileSync(filePath, 'utf8').trim();
+}
+
+function readBaselinePromptPath() {
+  const baselinePromptPath = readResolvedBaselinePromptPath();
+  if (!baselinePromptPath) {
+    throw new Error(
+      'No baseline prompt artifact is available. Run compare evals via task eval:compare or sh evals/promptfoo/run_promptfoo_phase.sh so the baseline artifact URL is resolved first, or set STRAVA_COACH_BASELINE_URL explicitly.',
+    );
+  }
+
+  return baselinePromptPath;
 }
 
 function buildScenarioPrompt(promptText, vars) {
@@ -45,7 +56,7 @@ function candidatePrompt(context) {
 }
 
 function baselinePrompt(context) {
-  return buildScenarioPrompt(readPromptText(BASELINE_PROMPT_PATH), context.vars);
+  return buildScenarioPrompt(readPromptText(readBaselinePromptPath()), context.vars);
 }
 
 module.exports = {

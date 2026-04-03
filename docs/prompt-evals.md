@@ -23,7 +23,7 @@ pre-commit hooks.
 evals/
   cases/
   promptfoo/
-  prompts/system_prompt.baseline.md
+  prompts/
   config.yaml
   reports/
 docs/prompt-evals.md
@@ -191,6 +191,7 @@ PROMPTFOO_CONFIG_DIR=.promptfoo ./node_modules/.bin/promptfoo eval \
 Comparison config:
 
 ```bash
+STRAVA_COACH_RESOLVED_BASELINE_PROMPT_PATH="$(task eval:baseline:resolve)" \
 PROMPTFOO_CONFIG_DIR=.promptfoo ./node_modules/.bin/promptfoo eval \
   -c evals/promptfoo/promptfooconfig.compare.yaml
 ```
@@ -209,6 +210,10 @@ PROMPTFOO_CONFIG_DIR=.promptfoo ./node_modules/.bin/promptfoo eval \
   --watch \
   --filter-metadata suite=grounding
 ```
+
+Use `task eval:compare` as the normal compare entrypoint. The raw compare
+Promptfoo command above is mainly for debugging and requires a resolved baseline
+artifact path in `STRAVA_COACH_RESOLVED_BASELINE_PROMPT_PATH`.
 
 ## Taskfile Commands
 
@@ -230,6 +235,13 @@ Comparison runs:
 ```bash
 task eval:compare
 task eval:compare -- --filter-metadata suite=personalization
+```
+
+Baseline artifact resolution:
+
+```bash
+task eval:baseline:resolve
+task eval:baseline:resolve -- --json
 ```
 
 Full suite:
@@ -257,6 +269,67 @@ Typical files are:
 - `self.json`
 - `compare.json`
 - `summary.md`
+
+Compare evals also resolve a pinned baseline prompt artifact into local
+Promptfoo state before Promptfoo starts. By default that cached artifact lives
+under:
+
+- `.promptfoo/baselines/`
+
+The default baseline source is defined in
+[`evals/config.yaml`](../evals/config.yaml) and points at an immutable,
+semver-versioned GitHub Releases download URL. `task eval:compare` and
+`task eval:full` fetch that artifact automatically. If the artifact cannot be
+fetched, compare evals fail early before any hosted model calls are made.
+
+## Baseline Promotion And Overrides
+
+The repo no longer keeps a second tracked copy of the system prompt for compare
+evals. Instead:
+
+1. The candidate prompt remains the repo-root [`system_prompt.md`](../system_prompt.md).
+2. The default compare baseline is pinned in [`evals/config.yaml`](../evals/config.yaml)
+   under `baseline.version` and `baseline.url`.
+3. Compare runs resolve that pinned artifact from its release download URL and cache
+   it locally under `.promptfoo/baselines/`.
+
+Successful baseline releases are published through
+[`baseline-prompt-release.yml`](../.github/workflows/baseline-prompt-release.yml).
+Normal semver tags like `prompt-baseline-v1.1.0` publish `system_prompt.md` as
+the asset `strava-coach-system-prompt.md`.
+
+When a candidate prompt becomes the new published baseline, publish a new
+semver baseline release and then update the pinned `baseline.url` and
+`baseline.version` in [`evals/config.yaml`](../evals/config.yaml) to that
+release.
+
+For targeted QA or local experiments, you can override the default source
+without editing tracked files:
+
+- `STRAVA_COACH_BASELINE_URL=https://example.com/prompt.md task eval:compare`
+- `STRAVA_COACH_BASELINE_URL=file:///absolute/path/to/prompt.md task eval:compare`
+- `STRAVA_COACH_BASELINE_PROMPT_PATH=/absolute/path/to/prompt.md task eval:compare`
+
+Use `file://` URLs for local QA, offline work, or airgapped environments when
+you still want to stay on the URL-based baseline interface. The explicit path
+override remains available as a convenience escape hatch.
+
+### Release Workflow
+
+Current pinned baseline:
+
+1. `prompt-baseline-v1.0.0` already exists as the initial release-backed
+   baseline artifact.
+2. [`evals/config.yaml`](../evals/config.yaml) stays pinned to that release URL
+   until a newer baseline release is intentionally promoted.
+
+Future releases:
+
+1. Publish a new `prompt-baseline-v<semver>` release from `system_prompt.md`.
+2. Update the pinned `baseline.url` and `baseline.version` in
+   [`evals/config.yaml`](../evals/config.yaml).
+3. Run `task check` or `task verify` before handoff so the new URL resolves in
+   the same way CI will use it.
 
 CI may produce additional per-suite files such as `self.smoke.json` or
 `compare.personalization.json` when it loops changed suites on trusted `main`

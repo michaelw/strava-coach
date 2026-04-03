@@ -53,8 +53,10 @@ function createPromptfooReport({
 function createFakePromptfoo(tempDir, behavior = 'pass') {
   const promptfooPath = path.join(tempDir, 'promptfoo');
   const argsDir = path.join(tempDir, 'args');
+  const baselineDir = path.join(tempDir, 'baseline');
   const countFile = path.join(tempDir, 'count.txt');
   fs.mkdirSync(argsDir, { recursive: true });
+  fs.mkdirSync(baselineDir, { recursive: true });
   fs.writeFileSync(countFile, '0', 'utf8');
 
   writeExecutable(
@@ -66,7 +68,9 @@ function createFakePromptfoo(tempDir, behavior = 'pass') {
       'COUNT=$((COUNT + 1))',
       'printf "%s" "$COUNT" > "$FAKE_PROMPTFOO_COUNT_FILE"',
       'ARGS_FILE="$FAKE_PROMPTFOO_ARGS_DIR/args-$COUNT.txt"',
+      'BASELINE_FILE="$FAKE_PROMPTFOO_BASELINE_DIR/path-$COUNT.txt"',
       'printf "%s\\n" "$@" > "$ARGS_FILE"',
+      'printf "%s" "${STRAVA_COACH_RESOLVED_BASELINE_PROMPT_PATH:-}" > "$BASELINE_FILE"',
       'OUTPUT=""',
       'RETRY_ERRORS="false"',
       'RETRY_FLAKY="false"',
@@ -122,7 +126,7 @@ function createFakePromptfoo(tempDir, behavior = 'pass') {
     ].join('\n'),
   );
 
-  return { promptfooPath, argsDir, countFile };
+  return { promptfooPath, argsDir, baselineDir, countFile };
 }
 
 function readInvocationArgs(argsDir) {
@@ -133,15 +137,34 @@ function readInvocationArgs(argsDir) {
     .map((name) => fs.readFileSync(path.join(argsDir, name), 'utf8').trim().split('\n').filter(Boolean));
 }
 
+function readResolvedBaselinePaths(baselineDir) {
+  return fs
+    .readdirSync(baselineDir)
+    .filter((name) => name.endsWith('.txt'))
+    .sort((left, right) => left.localeCompare(right, 'en', { numeric: true }))
+    .map((name) => fs.readFileSync(path.join(baselineDir, name), 'utf8').trim())
+    .filter(Boolean);
+}
+
 function runHelper(args, envOverrides = {}) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-phase-'));
-  const { promptfooPath, argsDir, countFile } = createFakePromptfoo(tempDir, envOverrides.FAKE_PROMPTFOO_BEHAVIOR);
+  const { promptfooPath, argsDir, baselineDir, countFile } = createFakePromptfoo(tempDir, envOverrides.FAKE_PROMPTFOO_BEHAVIOR);
   const outputDir = path.join(tempDir, 'artifacts');
+  const promptfooStateDir = path.join(tempDir, 'promptfoo-state');
+  const baselinePromptPath = path.join(tempDir, 'baseline.md');
+  const hasExplicitBaselineSource = [
+    'STRAVA_COACH_BASELINE_PROMPT_PATH',
+    'STRAVA_COACH_BASELINE_URL',
+    'STRAVA_COACH_BASELINE_VERSION',
+  ].some((name) => Object.prototype.hasOwnProperty.call(envOverrides, name));
+
+  fs.writeFileSync(baselinePromptPath, 'Test baseline prompt artifact.\n', 'utf8');
   const result = spawnSync('sh', args, {
     cwd: ROOT,
     env: {
       ...process.env,
       FAKE_PROMPTFOO_ARGS_DIR: argsDir,
+      FAKE_PROMPTFOO_BASELINE_DIR: baselineDir,
       FAKE_PROMPTFOO_COUNT_FILE: countFile,
       FAKE_PROMPTFOO_BEHAVIOR: envOverrides.FAKE_PROMPTFOO_BEHAVIOR || 'pass',
       FAKE_PROMPTFOO_REPORT_PASS: createPromptfooReport({ success: true }),
@@ -150,6 +173,8 @@ function runHelper(args, envOverrides = {}) {
       PROMPTFOO_BIN: promptfooPath,
       PROMPT_EVAL_OUTPUT_DIR: outputDir,
       PROMPT_EVAL_SKIP_SUMMARY: 'true',
+      PROMPTFOO_CONFIG_DIR: promptfooStateDir,
+      ...(hasExplicitBaselineSource ? {} : { STRAVA_COACH_BASELINE_PROMPT_PATH: baselinePromptPath }),
       ...envOverrides,
     },
     encoding: 'utf8',
@@ -158,7 +183,9 @@ function runHelper(args, envOverrides = {}) {
   return {
     result,
     outputDir,
+    promptfooStateDir,
     invocations: readInvocationArgs(argsDir),
+    resolvedBaselinePaths: readResolvedBaselinePaths(baselineDir),
   };
 }
 
@@ -208,6 +235,31 @@ test('helper retries flaky compare failures only for tagged compare cases', () =
   assert.ok(invocations[1].includes('--filter-failing-only'));
   assert.ok(invocations[1].includes('tags=flaky'));
   assert.equal(invocations[1][invocations[1].indexOf('-o') + 1], path.join(outputDir, 'compare.retry-flaky.1.json'));
+});
+
+test('compare phase resolves a baseline prompt path before invoking promptfoo', () => {
+  const { result, invocations, resolvedBaselinePaths } = runHelper(
+    [SCRIPT_PATH, 'evals/promptfoo/promptfooconfig.compare.yaml'],
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(invocations.length, 1);
+  assert.equal(resolvedBaselinePaths.length, 1);
+  assert.match(resolvedBaselinePaths[0], /baseline\.md$/);
+});
+
+test('compare phase fails before promptfoo when the baseline artifact cannot be resolved', () => {
+  const { result, invocations } = runHelper(
+    [SCRIPT_PATH, 'evals/promptfoo/promptfooconfig.compare.yaml'],
+    {
+      STRAVA_COACH_BASELINE_URL: 'http://127.0.0.1:1/missing-baseline.md',
+      STRAVA_COACH_BASELINE_VERSION: 'missing-baseline',
+    },
+  );
+
+  assert.equal(result.status, 1);
+  assert.equal(invocations.length, 0);
+  assert.match(result.stderr, /Baseline prompt resolution failed:/);
 });
 
 test('helper honors env overrides over config defaults', () => {
@@ -276,7 +328,9 @@ test('helper honors CLI retry overrides over env and config', () => {
 test('helper honors output-dir, output-prefix, and skip-summary flags', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-phase-compare-'));
   const outputDir = path.join(tempDir, 'artifacts');
-  const { promptfooPath, argsDir, countFile } = createFakePromptfoo(tempDir, 'pass');
+  const baselinePromptPath = path.join(tempDir, 'baseline.md');
+  const { promptfooPath, argsDir, baselineDir, countFile } = createFakePromptfoo(tempDir, 'pass');
+  fs.writeFileSync(baselinePromptPath, 'Test baseline prompt artifact.\n', 'utf8');
 
   const result = spawnSync('sh', [
     SCRIPT_PATH,
@@ -291,12 +345,14 @@ test('helper honors output-dir, output-prefix, and skip-summary flags', () => {
     env: {
       ...process.env,
       FAKE_PROMPTFOO_ARGS_DIR: argsDir,
+      FAKE_PROMPTFOO_BASELINE_DIR: baselineDir,
       FAKE_PROMPTFOO_COUNT_FILE: countFile,
       FAKE_PROMPTFOO_BEHAVIOR: 'pass',
       FAKE_PROMPTFOO_REPORT_PASS: createPromptfooReport({ success: true }),
       FAKE_PROMPTFOO_REPORT_ERROR: createPromptfooReport({ success: false, error: 'API error: 429 Too Many Requests' }),
       FAKE_PROMPTFOO_REPORT_FLAKY_FAIL: createPromptfooReport({ success: false, reason: 'LLM rubric failed', tags: ['sample', 'flaky'] }),
       PROMPTFOO_BIN: promptfooPath,
+      STRAVA_COACH_BASELINE_PROMPT_PATH: baselinePromptPath,
     },
     encoding: 'utf8',
   });
@@ -311,7 +367,7 @@ test('helper honors output-dir, output-prefix, and skip-summary flags', () => {
 test('helper prints a high-signal summary block before failing on non-pass results', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-phase-summary-'));
   const outputDir = path.join(tempDir, 'artifacts');
-  const { promptfooPath, argsDir, countFile } = createFakePromptfoo(tempDir, 'always-error');
+  const { promptfooPath, argsDir, baselineDir, countFile } = createFakePromptfoo(tempDir, 'always-error');
 
   const result = spawnSync('sh', [
     SCRIPT_PATH,
@@ -323,6 +379,7 @@ test('helper prints a high-signal summary block before failing on non-pass resul
     env: {
       ...process.env,
       FAKE_PROMPTFOO_ARGS_DIR: argsDir,
+      FAKE_PROMPTFOO_BASELINE_DIR: baselineDir,
       FAKE_PROMPTFOO_COUNT_FILE: countFile,
       FAKE_PROMPTFOO_BEHAVIOR: 'always-error',
       FAKE_PROMPTFOO_REPORT_PASS: createPromptfooReport({ success: true }),

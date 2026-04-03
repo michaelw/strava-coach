@@ -153,6 +153,26 @@ Run compare evals:
 task eval:compare
 ```
 
+Resolve the pinned compare baseline artifact without running Promptfoo:
+
+```bash
+task eval:baseline:resolve
+```
+
+Override the baseline with a local file URL during QA or offline work:
+
+```bash
+STRAVA_COACH_BASELINE_URL=file:///absolute/path/to/prompt.md task eval:compare
+```
+
+Publish a semver baseline release artifact:
+
+- use the `Publish Baseline Prompt Release` workflow on GitHub, or push a tag
+  like `prompt-baseline-v1.1.0`
+- the workflow publishes `system_prompt.md` by default
+- the initial release `prompt-baseline-v1.0.0` already exists and serves as the
+  current pinned baseline artifact
+
 Run the full hosted suite:
 
 ```bash
