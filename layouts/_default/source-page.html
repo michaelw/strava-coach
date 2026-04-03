@@ -8,7 +8,14 @@
     <h1>{{ partial "utils/title" . }}</h1>
     {{ partial "page-metadata" . }}
     {{ with .Params.sourceFile }}
-      {{ os.ReadFile . | markdownify }}
+      {{ $allowedSourceFiles := dict
+        "system_prompt.md" "system_prompt.md"
+      }}
+      {{ $resolvedSourceFile := index $allowedSourceFiles . }}
+      {{ if not $resolvedSourceFile }}
+        {{ errorf "unsupported sourceFile %q for %s" . $.File.Path }}
+      {{ end }}
+      {{ readFile $resolvedSourceFile | markdownify }}
     {{ end }}
   </article>
 {{ end }}

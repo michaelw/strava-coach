@@ -146,6 +146,13 @@ jobs:
           node-version: "22"
           cache: "npm"
 
+      - name: Set up ripgrep
+        if: steps.decide.outputs.active == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          rg --version
+
       - name: Set up repo tooling
         if: steps.decide.outputs.active == 'true'
         run: task setup
@@ -188,6 +195,12 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
+
+      - name: Set up ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          rg --version
 
       - name: Set up repo tooling
         run: task setup
@@ -243,6 +256,12 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
+
+      - name: Set up ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          rg --version
 
       - name: Set up repo tooling
         run: task setup
@@ -337,6 +356,12 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
+
+      - name: Set up ripgrep
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          rg --version
 
       - name: Set up repo tooling
         run: task setup

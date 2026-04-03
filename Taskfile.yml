@@ -16,6 +16,12 @@ tasks:
     desc: Install repo tooling for local/devcontainer/CI use
     cmds:
       - |
+        if ! command -v rg >/dev/null 2>&1; then
+          echo "ripgrep (rg) is required for Promptfoo test discovery." >&2
+          echo "Install ripgrep locally, use the devcontainer, or ensure CI bootstraps it first." >&2
+          exit 1
+        fi
+      - |
         if ! command -v hugo >/dev/null 2>&1; then
           echo "Hugo is required for local site preview and production builds." >&2
           echo "Install Hugo locally or use the devcontainer for docs work." >&2

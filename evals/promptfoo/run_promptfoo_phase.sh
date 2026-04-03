@@ -65,7 +65,16 @@ fi
 CONFIG_PATH="$1"
 shift 1
 
-CONFIG_BASENAME=$(basename -- "$CONFIG_PATH")
+case "$CONFIG_PATH" in
+  /*)
+    RESOLVED_CONFIG_PATH="$CONFIG_PATH"
+    ;;
+  *)
+    RESOLVED_CONFIG_PATH="$ROOT_DIR/$CONFIG_PATH"
+    ;;
+esac
+
+CONFIG_BASENAME=$(basename -- "$RESOLVED_CONFIG_PATH")
 PHASE_NAME="${CONFIG_BASENAME%.yaml}"
 PHASE_NAME="${PHASE_NAME#promptfooconfig.}"
 
@@ -93,7 +102,7 @@ run_promptfoo_eval() {
   PROMPTFOO_CONFIG_DIR="$PROMPTFOO_CONFIG_DIR" \
   PROMPTFOO_DISABLE_WAL_MODE="$PROMPTFOO_DISABLE_WAL_MODE" \
   "$PROMPTFOO_BIN" eval \
-    -c "$ROOT_DIR/$CONFIG_PATH" \
+    -c "$RESOLVED_CONFIG_PATH" \
     --no-cache \
     -o "$OUTPUT_PATH" \
     "$@" || true

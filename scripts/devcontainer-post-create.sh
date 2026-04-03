@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl pipx python3-venv
+sudo apt-get install -y ca-certificates curl pipx python3-venv ripgrep
 
 if ! command -v task >/dev/null 2>&1; then
   sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
@@ -36,4 +36,5 @@ fi
 
 task --version
 hugo version
+rg --version
 task setup
