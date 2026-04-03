@@ -1,0 +1,11 @@
+prompt_eval:
+  - 'system_prompt.md'
+  - 'evals/**'
+  - 'package.json'
+  - 'package-lock.json'
+  - 'Taskfile.yml'
+  - '.github/workflows/prompt-eval.yml'
+  - '.github/prompt-eval-paths.yml'
+
+eval_cases:
+  - 'evals/cases/**'

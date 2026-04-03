@@ -2,97 +2,165 @@ name: Prompt Eval
 
 on:
   pull_request:
-    paths:
-      - "system_prompt.md"
-      - "evals/**"
-      - "package.json"
-      - "package-lock.json"
-      - "Taskfile.yml"
-      - ".github/workflows/prompt-eval.yml"
   push:
     branches:
       - main
-      - master
-    paths:
-      - "system_prompt.md"
-      - "evals/**"
-      - "package.json"
-      - "package-lock.json"
-      - "Taskfile.yml"
-      - ".github/workflows/prompt-eval.yml"
   schedule:
     - cron: "0 9 * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
+  actions: read
 
 jobs:
-  validate-cases:
-    name: Validate Promptfoo Cases
+  detect-prompt-eval-changes:
+    name: Detect Prompt Eval Changes
     runs-on: ubuntu-latest
+    outputs:
+      prompt_eval_changed: ${{ steps.filter.outputs.prompt_eval }}
+      eval_case_files: ${{ steps.filter.outputs.eval_cases_files }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect relevant changes
+        id: filter
+        uses: step-security/paths-filter@6eee183b0d2fd101d3f8ee2935c127bca14c5625
+        with:
+          filters: .github/prompt-eval-paths.yml
+          list-files: json
+
+  detect-nightly-work:
+    name: Detect Nightly Work
+    runs-on: ubuntu-latest
+    outputs:
+      nightly_has_new_commit: ${{ steps.default_preflight.outputs.nightly_has_new_commit || steps.schedule_preflight.outputs.nightly_has_new_commit }}
+
+    steps:
+      - name: Default nightly preflight
+        if: github.event_name != 'schedule'
+        id: default_preflight
+        run: echo "nightly_has_new_commit=true" >> "$GITHUB_OUTPUT"
+
+      - name: Check for new commits since last nightly
+        if: github.event_name == 'schedule'
+        id: schedule_preflight
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const currentSha = context.sha;
+            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'prompt-eval.yml',
+              branch: 'main',
+              event: 'schedule',
+              status: 'completed',
+              per_page: 100,
+            });
+
+            const previousRun = runs.find((run) => run.head_sha && run.id !== context.runId);
+            if (!previousRun) {
+              core.info('No previous completed scheduled run found; running nightly eval.');
+              core.setOutput('nightly_has_new_commit', 'true');
+              return;
+            }
+
+            const hasNewCommit = previousRun.head_sha !== currentSha;
+            core.info(`Previous completed nightly head SHA: ${previousRun.head_sha}`);
+            core.info(`Current scheduled run head SHA: ${currentSha}`);
+            core.info(hasNewCommit ? 'New commit detected; running nightly eval.' : 'No new commit since last nightly; skipping expensive nightly eval.');
+            core.setOutput('nightly_has_new_commit', hasNewCommit ? 'true' : 'false');
+
+  prompt-eval-gate:
+    name: Prompt Eval Gate
+    runs-on: ubuntu-latest
+    needs:
+      - detect-prompt-eval-changes
+      - detect-nightly-work
+
+    steps:
+      - name: Decide whether to run prompt gate
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PROMPT_EVAL_CHANGED: ${{ needs.detect-prompt-eval-changes.outputs.prompt_eval_changed }}
+          NIGHTLY_HAS_NEW_COMMIT: ${{ needs.detect-nightly-work.outputs.nightly_has_new_commit }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            ACTIVE="true"
+            REASON="manual dispatch"
+          elif [ "$EVENT_NAME" = "schedule" ]; then
+            if [ "$NIGHTLY_HAS_NEW_COMMIT" = "true" ]; then
+              ACTIVE="true"
+              REASON="new commit since last completed nightly"
+            else
+              ACTIVE="false"
+              REASON="no new commit since last completed nightly"
+            fi
+          elif [ "$PROMPT_EVAL_CHANGED" = "true" ]; then
+            ACTIVE="true"
+            REASON="prompt-eval inputs changed"
+          else
+            ACTIVE="false"
+            REASON="no prompt-eval inputs changed"
+          fi
+
+          echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Skip gate work
+        if: steps.decide.outputs.active != 'true'
+        run: |
+          echo "Prompt eval gate skipped: ${{ steps.decide.outputs.reason }}."
+
+      - name: Checkout
+        if: steps.decide.outputs.active == 'true'
+        uses: actions/checkout@v4
 
       - name: Set up Task
+        if: steps.decide.outputs.active == 'true'
         uses: go-task/setup-task@v1
         with:
           version: "3.x"
 
       - name: Set up Node
+        if: steps.decide.outputs.active == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
       - name: Set up repo tooling
+        if: steps.decide.outputs.active == 'true'
         run: task setup
 
       - name: Validate cases
+        if: steps.decide.outputs.active == 'true'
         run: task eval:validate
 
-  test-fast:
-    name: Fast Promptfoo Tests
-    runs-on: ubuntu-latest
-    needs: validate-cases
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Task
-        uses: go-task/setup-task@v1
-        with:
-          version: "3.x"
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-
-      - name: Set up repo tooling
-        run: task setup
-
       - name: Run fast Promptfoo tests
+        if: steps.decide.outputs.active == 'true'
         run: task test
 
   eval-smoke:
     name: Eval Smoke
     runs-on: ubuntu-latest
     needs:
-      - validate-cases
-      - test-fast
+      - detect-prompt-eval-changes
+      - prompt-eval-gate
+    environment: openai-ci
     env:
       PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke
       PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke
     if: |
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
 
     steps:
       - name: Checkout
@@ -113,6 +181,11 @@ jobs:
 
       - name: Set up repo tooling
         run: task setup
+
+      - name: Mask OpenAI API key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: echo "::add-mask::$OPENAI_API_KEY"
 
       - name: Run smoke eval
         id: smoke_eval
@@ -136,16 +209,13 @@ jobs:
     name: Eval Targeted
     runs-on: ubuntu-latest
     needs:
-      - validate-cases
-      - test-fast
+      - detect-prompt-eval-changes
+      - prompt-eval-gate
+    environment: openai-ci
     env:
       PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-targeted
       PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-targeted
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true'
 
     steps:
       - name: Checkout
@@ -167,27 +237,33 @@ jobs:
       - name: Set up repo tooling
         run: task setup
 
+      - name: Mask OpenAI API key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: echo "::add-mask::$OPENAI_API_KEY"
+
       - name: Detect suites
         id: suites
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.sha }}
+          EVAL_CASE_FILES: ${{ needs.detect-prompt-eval-changes.outputs.eval_case_files }}
         run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            RANGE="$BASE_SHA $HEAD_SHA"
-          else
-            RANGE="$BEFORE_SHA $AFTER_SHA"
-          fi
-          CHANGED="$(git diff --name-only $RANGE -- evals/cases | awk -F/ '/^evals\/cases\// {print $4}' | sort -u)"
-          if [ -z "$CHANGED" ]; then
-            CHANGED="smoke"
+          SUITES="$(node -e '
+            const files = JSON.parse(process.env.EVAL_CASE_FILES || "[]");
+            const suites = [...new Set(
+              files
+                .map((file) => file.split("/"))
+                .filter((parts) => parts.length >= 4)
+                .map((parts) => parts[3])
+                .filter(Boolean)
+            )].sort();
+            process.stdout.write(suites.join("\n"));
+          ')"
+          if [ -z "$SUITES" ]; then
+            SUITES="smoke"
           fi
           {
             echo "list<<EOF"
-            echo "$CHANGED"
+            echo "$SUITES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -223,62 +299,17 @@ jobs:
         if: steps.targeted_eval.outcome == 'failure'
         run: exit 1
 
-  publish-summary:
-    name: Publish Summary
-    runs-on: ubuntu-latest
-    needs:
-      - eval-smoke
-      - eval-targeted
-    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Download summary artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: prompt-eval-targeted
-          path: evals/reports/targeted
-
-      - name: Create sticky PR comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require("fs");
-            const body = fs.readFileSync("evals/reports/targeted/summary.md", "utf8");
-            const header = "<!-- prompt-eval-summary -->";
-            const fullBody = `${header}\n${body}`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find((comment) => comment.body && comment.body.includes(header));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body: fullBody,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: fullBody,
-              });
-            }
-
   nightly-full:
     name: Nightly Full
     runs-on: ubuntu-latest
-    needs: validate-cases
+    needs:
+      - detect-nightly-work
+      - prompt-eval-gate
+    environment: openai-ci
     env:
       PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-full
       PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-full
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' && needs.detect-nightly-work.outputs.nightly_has_new_commit == 'true'
 
     steps:
       - name: Checkout
@@ -297,6 +328,11 @@ jobs:
 
       - name: Set up repo tooling
         run: task setup
+
+      - name: Mask OpenAI API key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: echo "::add-mask::$OPENAI_API_KEY"
 
       - name: Run full eval
         id: full_eval

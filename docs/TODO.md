@@ -6,7 +6,7 @@
 
 - check if OpenAI allows updating Custom GPT prompts via API, and do that on "deployment" (each merge to main branch kicks off deployment)
 
-- create OPENAI AI key for Github CI, and store it securely (or some other mechanism to authenticate GHA CI runs to OpenAI).  Also ensure that the API key does not leak (even through malicious pull requests.)
+- rotate the `OPENAI_API_KEY` stored in the `openai-ci` GitHub Actions environment periodically, and immediately after any suspected exposure.
 
 - result=PASS output from tests is buried, might be overlooked in failure output that is not relevant for the overall outcome.  make it stand out more.
 
