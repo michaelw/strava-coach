@@ -37,6 +37,8 @@ Does not run:
 
 `Lint And Validate`:
 
+- validates PR issue references when the branch name carries an issue token such
+  as `issue-26`
 - re-runs diff-scoped `pre-commit` on the PR diff
 - runs the full Hugo site build
 
@@ -94,6 +96,10 @@ gh workflow run prompt-eval.yml --ref main -f run_nightly_full=true
 ### Docs or content only
 
 Usually nothing beyond local `pre-commit`.
+
+If the branch name includes an issue token such as `issue-42`, make sure the PR
+title or body references that issue and each non-merge commit message does too.
+Use a plain reference like `#42` unless the PR or commit fully resolves it.
 
 If you touched layouts, Hugo config, or rendering behavior, also run:
 
@@ -166,3 +172,15 @@ If you run `pre-commit run -a`, two prompt-validation hooks may both appear:
 - `Validate changed case YAML files` routes changed filenames through `task eval:validate --`
 - `Validate full case tree after validator/schema/fixture changes` is the
   global backstop that exists for validation-plumbing edits
+
+## Issue Reference Guardrail
+
+When a PR branch name explicitly carries an issue number, for example
+`codex/implement-github-issue-26`, CI expects:
+
+- the PR title or body to reference `#26`
+- every non-merge commit in that PR to reference `#26`
+
+The guardrail accepts either a plain issue reference such as `#26` or a full
+issue URL. Prefer a plain reference unless the PR or commit should actually
+close the issue on merge.

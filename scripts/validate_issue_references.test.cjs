@@ -1,0 +1,109 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const {
+  extractBranchIssueNumbers,
+  messageContainsIssueReference,
+  validateIssueReferences,
+} = require('./validate_issue_references.cjs');
+
+test('extractBranchIssueNumbers finds issue ids from common branch patterns', () => {
+  assert.deepEqual(
+    extractBranchIssueNumbers('codex/implement-github-issue-26'),
+    [26],
+  );
+  assert.deepEqual(
+    extractBranchIssueNumbers('feature/issues/26-improve-ci'),
+    [26],
+  );
+  assert.deepEqual(
+    extractBranchIssueNumbers('codex/gh-12-and-issue-26'),
+    [12, 26],
+  );
+});
+
+test('extractBranchIssueNumbers ignores unrelated numeric branch segments', () => {
+  assert.deepEqual(
+    extractBranchIssueNumbers('release/2026-04'),
+    [],
+  );
+});
+
+test('messageContainsIssueReference accepts issue shorthand and issue urls', () => {
+  assert.equal(messageContainsIssueReference('Implements #26', 26), true);
+  assert.equal(
+    messageContainsIssueReference(
+      'Related: https://github.com/michaelw/strava-coach/issues/26',
+      26,
+    ),
+    true,
+  );
+  assert.equal(messageContainsIssueReference('Mentions #260 instead', 26), false);
+});
+
+test('validateIssueReferences skips branches without explicit issue tokens', () => {
+  const result = validateIssueReferences({
+    branchName: 'docs/update-homepage',
+    prTitle: 'Refresh docs',
+    prBody: '',
+    commits: [],
+  });
+
+  assert.equal(result.skipped, true);
+  assert.deepEqual(result.branchIssues, []);
+});
+
+test('validateIssueReferences requires matching issue refs in PR context and commits', () => {
+  const result = validateIssueReferences({
+    branchName: 'codex/implement-github-issue-26',
+    prTitle: 'Improve CI guardrails',
+    prBody: 'Adds a PR template.',
+    commits: [
+      {
+        sha: 'abc1234',
+        subject: 'ci: add issue reference validator',
+        body: '',
+        message: 'ci: add issue reference validator',
+      },
+      {
+        sha: 'def5678',
+        subject: 'docs: explain issue reference enforcement (#26)',
+        body: '',
+        message: 'docs: explain issue reference enforcement (#26)',
+      },
+    ],
+  });
+
+  assert.deepEqual(result.branchIssues, [26]);
+  assert.deepEqual(result.missingPrIssues, [26]);
+  assert.deepEqual(
+    result.commitsMissingIssues.map((commit) => commit.sha),
+    ['abc1234'],
+  );
+});
+
+test('validateIssueReferences passes when PR context and all commits reference the branch issue', () => {
+  const result = validateIssueReferences({
+    branchName: 'codex/implement-github-issue-26',
+    prTitle: 'ci: enforce issue references in PRs and commits (#26)',
+    prBody: 'Documents the new guardrail.',
+    commits: [
+      {
+        sha: 'abc1234',
+        subject: 'ci: validate PR issue refs (#26)',
+        body: '',
+        message: 'ci: validate PR issue refs (#26)',
+      },
+      {
+        sha: 'def5678',
+        subject: 'docs: document issue ref checks',
+        body: 'Related to #26.',
+        message: 'docs: document issue ref checks\n\nRelated to #26.',
+      },
+    ],
+  });
+
+  assert.deepEqual(result.missingPrIssues, []);
+  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.equal(result.skipped, false);
+});

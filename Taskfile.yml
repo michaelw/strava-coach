@@ -84,6 +84,11 @@ tasks:
         fi
       - task: site:build
 
+  ci:issue-refs:
+    desc: Validate PR issue references from branch naming, PR context, and commit messages
+    cmds:
+      - node scripts/validate_issue_references.cjs {{.CLI_ARGS}}
+
   ci:prompt:
     desc: Run prompt-domain CI checks
     cmds:
@@ -92,7 +97,7 @@ tasks:
   test:
     desc: Run fast local Promptfoo tests
     cmds:
-      - PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node --test $(rg --files evals/promptfoo evals/capture -g '*.test.cjs')
+      - PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node --test $(rg --files evals/promptfoo evals/capture scripts -g '*.test.cjs')
 
   eval:validate:
     desc: Validate Promptfoo case files

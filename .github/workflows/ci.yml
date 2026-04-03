@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   TASK_SILENT: "0"
@@ -65,6 +66,13 @@ jobs:
 
       - name: Set up repo tooling
         run: task setup
+
+      - name: Validate PR issue references
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: task ci:issue-refs
 
       - name: Run repo checks for pull requests
         if: github.event_name == 'pull_request'
