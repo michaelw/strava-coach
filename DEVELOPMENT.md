@@ -43,6 +43,14 @@ List available tasks:
 task
 ```
 
+Local Task runs are quiet by default so you mostly see the underlying tool
+output. For Task's own command traces while debugging, prefix the command with
+`TASK_SILENT=0`, for example:
+
+```bash
+TASK_SILENT=0 task check
+```
+
 Fast non-hosted prompt-domain checks:
 
 ```bash

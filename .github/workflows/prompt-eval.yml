@@ -20,6 +20,9 @@ permissions:
   pull-requests: read
   actions: read
 
+env:
+  TASK_SILENT: "0"
+
 jobs:
   detect-prompt-eval-changes:
     name: Detect Prompt Eval Changes

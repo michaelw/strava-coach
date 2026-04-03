@@ -11,6 +11,9 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  TASK_SILENT: "0"
+
 concurrency:
   group: pages
   cancel-in-progress: true

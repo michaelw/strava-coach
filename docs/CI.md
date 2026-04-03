@@ -12,6 +12,8 @@ hooks can be skipped with `--no-verify`.
 
 Use `task` as the canonical interface for repo operations. `pre-commit` hooks
 and raw `node` scripts are implementation details.
+Local Task runs are quiet by default; GitHub Actions overrides that with
+`TASK_SILENT=0` so CI logs keep Task command traces.
 
 ## What Runs Automatically
 
