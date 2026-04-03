@@ -151,7 +151,7 @@ Prompt regression tooling for `system_prompt.md` is documented in
 Promptfoo-native case format, the native `promptfoo eval/view` workflow,
 smoke and full eval commands, Promptfoo-first reporting, the
 production-shaped fixture capture pipeline, and the security model for trusted
-vs forked pull requests.
+same-repo vs forked pull requests.
 
 ## Local Pages Preview
 

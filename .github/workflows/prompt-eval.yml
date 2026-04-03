@@ -83,32 +83,27 @@ jobs:
             core.info(hasNewCommit ? 'New commit detected; running nightly eval.' : 'No new commit since last nightly; skipping expensive nightly eval.');
             core.setOutput('nightly_has_new_commit', hasNewCommit ? 'true' : 'false');
 
-  detect-trusted-pr:
-    name: Detect Trusted PR
+  detect-hosted-pr-eligibility:
+    name: Detect Hosted PR Eligibility
     runs-on: ubuntu-latest
     outputs:
-      trusted_owner_pr: ${{ steps.decide.outputs.trusted_owner_pr }}
+      same_repo_pr: ${{ steps.decide.outputs.same_repo_pr }}
 
     steps:
-      - name: Decide whether this PR is trusted for hosted evals
+      - name: Decide whether this PR may run hosted evals
         id: decide
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || '' }}
-          PR_USER_LOGIN: ${{ github.event.pull_request.user.login || '' }}
           REPOSITORY: ${{ github.repository }}
-          REPOSITORY_OWNER: ${{ github.repository_owner }}
-          GITHUB_ACTOR: ${{ github.actor }}
         run: |
-          TRUSTED="false"
+          SAME_REPO="false"
           if [ "$EVENT_NAME" = "pull_request" ] &&
-             [ "$PR_HEAD_REPO" = "$REPOSITORY" ] &&
-             [ "$PR_USER_LOGIN" = "$REPOSITORY_OWNER" ] &&
-             [ "$GITHUB_ACTOR" = "$REPOSITORY_OWNER" ]; then
-            TRUSTED="true"
+             [ "$PR_HEAD_REPO" = "$REPOSITORY" ]; then
+            SAME_REPO="true"
           fi
 
-          echo "trusted_owner_pr=$TRUSTED" >> "$GITHUB_OUTPUT"
+          echo "same_repo_pr=$SAME_REPO" >> "$GITHUB_OUTPUT"
 
   prompt-eval-gate:
     name: Prompt Eval Gate
@@ -193,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - detect-prompt-eval-changes
-      - detect-trusted-pr
+      - detect-hosted-pr-eligibility
       - prompt-eval-gate
     environment: openai-ci
     env:
@@ -210,7 +205,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           PROMPT_EVAL_CHANGED: ${{ needs.detect-prompt-eval-changes.outputs.prompt_eval_changed }}
-          TRUSTED_OWNER_PR: ${{ needs.detect-trusted-pr.outputs.trusted_owner_pr }}
+          SAME_REPO_PR: ${{ needs.detect-hosted-pr-eligibility.outputs.same_repo_pr }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             ACTIVE="true"
@@ -218,12 +213,12 @@ jobs:
           elif [ "$EVENT_NAME" = "push" ]; then
             ACTIVE="true"
             REASON="trusted main push with prompt-eval changes"
-          elif [ "$TRUSTED_OWNER_PR" = "true" ] && [ "$PROMPT_EVAL_CHANGED" = "true" ]; then
+          elif [ "$SAME_REPO_PR" = "true" ] && [ "$PROMPT_EVAL_CHANGED" = "true" ]; then
             ACTIVE="true"
-            REASON="trusted owner PR with prompt-eval changes"
-          elif [ "$TRUSTED_OWNER_PR" != "true" ]; then
+            REASON="same-repo PR with prompt-eval changes"
+          elif [ "$SAME_REPO_PR" != "true" ]; then
             ACTIVE="false"
-            REASON="untrusted PR"
+            REASON="fork PRs do not receive hosted eval secrets"
           else
             ACTIVE="false"
             REASON="no prompt-eval inputs changed"
@@ -297,7 +292,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - detect-prompt-eval-changes
-      - detect-trusted-pr
+      - detect-hosted-pr-eligibility
       - prompt-eval-gate
     environment: openai-ci
     env:
@@ -306,7 +301,7 @@ jobs:
     if: |
       (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
       (github.event_name == 'pull_request' &&
-       needs.detect-trusted-pr.outputs.trusted_owner_pr == 'true' &&
+       needs.detect-hosted-pr-eligibility.outputs.same_repo_pr == 'true' &&
        needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true')
 
     steps:

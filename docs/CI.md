@@ -44,12 +44,12 @@ Does not run:
 - validates the full case tree
 - runs the fast Node prompt test suite
 
-Trusted owner PRs:
+Same-repo PRs:
 
 - `Eval Smoke` runs as the required hosted prompt gate
 - `Eval Targeted` may run as advisory hosted coverage
 
-Untrusted or docs-only PRs:
+Fork or docs-only PRs:
 
 - hosted prompt jobs skip or exit quickly without doing secret-backed work
 

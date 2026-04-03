@@ -109,11 +109,11 @@ environment secret in `openai-ci`.
 
 Hosted eval access is split by trust level:
 
-- `pull_request` hosted evals run only for same-repo PRs authored and triggered
-  by the repository owner
-- trusted owner PRs get `Eval Smoke` as the required hosted pre-merge signal
-- trusted owner PRs may also run advisory `Eval Targeted`
-- collaborator and fork PRs still get only non-secret validation
+- `pull_request` hosted evals run only for same-repo PRs
+- same-repo PRs get `Eval Smoke` as the required hosted pre-merge signal
+- same-repo PRs may also run advisory `Eval Targeted`
+- fork PRs still get only non-secret validation
+- same-repo write access is treated as trusted in this repo's threat model
 - `push` to `main`, scheduled runs, and manual dispatches on `main` continue to
   use the hosted key
 
