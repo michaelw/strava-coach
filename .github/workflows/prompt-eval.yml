@@ -97,7 +97,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PROMPT_EVAL_CHANGED: ${{ needs.detect-prompt-eval-changes.outputs.prompt_eval_changed }}
           NIGHTLY_HAS_NEW_COMMIT: ${{ needs.detect-nightly-work.outputs.nightly_has_new_commit }}
-          RUN_NIGHTLY_FULL: ${{ inputs.run_nightly_full }}
+          RUN_NIGHTLY_FULL: ${{ github.event.inputs.run_nightly_full || 'false' }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$RUN_NIGHTLY_FULL" = "true" ]; then
             ACTIVE="true"
@@ -321,7 +321,7 @@ jobs:
       PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-full
     if: |
       (github.event_name == 'schedule' && needs.detect-nightly-work.outputs.nightly_has_new_commit == 'true') ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.run_nightly_full)
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.event.inputs.run_nightly_full == 'true')
 
     steps:
       - name: Checkout
