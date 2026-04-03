@@ -208,6 +208,4 @@ done
 
 if [ "$SKIP_SUMMARY" != "true" ]; then
   node "$ROOT_DIR/evals/promptfoo/promptfoo_summary.cjs" --artifact-dir "$OUTPUT_DIR" --check
-  echo "artifact_dir=$OUTPUT_DIR"
-  echo "summary_path=$OUTPUT_DIR/summary.md"
 fi

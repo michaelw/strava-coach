@@ -128,13 +128,19 @@ tasks:
     cmds:
       - |
         OUTPUT_DIR="${PROMPT_EVAL_OUTPUT_DIR:-evals/reports/$(date -u +%Y%m%dT%H%M%SZ)-full}"
-        sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
-          evals/promptfoo/promptfooconfig.self.yaml
-        sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
-          evals/promptfoo/promptfooconfig.compare.yaml
-        task eval:summary -- --artifact-dir "$OUTPUT_DIR" --check
-        echo "artifact_dir=$OUTPUT_DIR"
-        echo "summary_path=$OUTPUT_DIR/summary.md"
+        RUN_STATUS=0
+        if ! sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
+          evals/promptfoo/promptfooconfig.self.yaml; then
+          RUN_STATUS=1
+        fi
+        if ! sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
+          evals/promptfoo/promptfooconfig.compare.yaml; then
+          RUN_STATUS=1
+        fi
+        if ! node evals/promptfoo/promptfoo_summary.cjs --artifact-dir "$OUTPUT_DIR" --check; then
+          RUN_STATUS=1
+        fi
+        exit "$RUN_STATUS"
 
   eval:summary:
     desc: Summarize Promptfoo artifacts and optionally enforce report checks

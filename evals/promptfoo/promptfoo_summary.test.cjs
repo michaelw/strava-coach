@@ -3,11 +3,15 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
   aggregateLogicalTests,
+  appendGithubStepSummary,
   buildCombinedReport,
+  buildHighSignalSummary,
   buildMarkdownSummary,
+  buildStepSummary,
   inferReliableCompareDecision,
   inferCompareWinner,
   parseArtifactFileName,
@@ -422,11 +426,176 @@ test('buildCombinedReport marks infrastructure errors as ERROR, not FAIL', () =>
   assert.equal(runReport.totals.recoveredErrors, 0);
   assert.equal(runReport.totals.failed, 0);
   assert.equal(runReport.totals.errors, 1);
-  assert.match(markdown, /Result: ERROR/);
+  assert.match(markdown, /Status: ERROR/);
   assert.match(markdown, /Errors: 1/);
   assert.match(markdown, /ERROR grounding\/grounding-001/);
   assert.match(markdown, /API error: 400 Bad Request/);
   assert.doesNotMatch(markdown, /\.html/);
+});
+
+test('buildHighSignalSummary makes PASS obvious in stdout-friendly form', () => {
+  const runReport = buildCombinedReport({
+    artifactDir: '/tmp/artifacts/workflow-001',
+    phaseReports: [
+      {
+        phaseName: 'self',
+        jsonPath: '/tmp/artifacts/workflow-001/self.json',
+        attemptKind: 'initial',
+        attemptNumber: 0,
+        attemptOrder: 0,
+        report: createPromptfooReport([
+          {
+            testIdx: 0,
+            promptIdx: 0,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              metadata: {
+                id: 'smoke-001',
+                suite: 'smoke',
+              },
+            },
+          },
+        ]),
+      },
+    ],
+  });
+
+  const summary = buildHighSignalSummary(runReport);
+
+  assert.match(summary, /^Prompt Eval: PASS/m);
+  assert.match(summary, /Totals: tests=1 passed=1 flaky_passed=0 recovered_errors=0 failed=0 errors=0/);
+  assert.match(summary, /Needs Attention: none/);
+});
+
+test('buildStepSummary and markdown front-load failing case context', () => {
+  const runReport = buildCombinedReport({
+    artifactDir: '/tmp/artifacts/workflow-001',
+    phaseReports: [
+      {
+        phaseName: 'compare.personalization',
+        phaseMode: 'compare',
+        jsonPath: '/tmp/artifacts/workflow-001/compare.personalization.json',
+        attemptKind: 'initial',
+        attemptNumber: 0,
+        attemptOrder: 0,
+        report: createPromptfooReport([
+          {
+            testIdx: 0,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 0,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 1,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 1,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 2,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 2,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+        ], [{ label: 'candidate' }, { label: 'baseline' }]),
+      },
+    ],
+  });
+
+  const stepSummary = buildStepSummary(runReport);
+  const markdown = buildMarkdownSummary(runReport);
+
+  assert.match(stepSummary, /## Prompt Eval Outcome/);
+  assert.match(stepSummary, /- Status: FAIL/);
+  assert.match(stepSummary, /### Needs Attention/);
+  assert.match(stepSummary, /FAILED personalization\/personalization-001 \[compare\.personalization\]/);
+  assert.match(stepSummary, /decision=baseline/);
+  assert.match(stepSummary, /gate=fail/);
+  assert.match(markdown, /## Prompt Eval Outcome/);
+  assert.match(markdown, /### Needs Attention/);
+  assert.match(markdown, /candidate=0 baseline=3 tie=0 unknown=0/);
 });
 
 test('aggregateLogicalTests marks error recovery and flaky passes distinctly', () => {
@@ -970,6 +1139,46 @@ test('buildCombinedReport treats recovered and flaky passes as overall PASS', ()
   assert.match(markdown, /RECOVERED_ERROR grounding\/grounding-001/);
 });
 
+test('appendGithubStepSummary writes a compact summary for failing runs', () => {
+  const stepSummaryPath = path.join(os.tmpdir(), `strava-coach-step-summary-${Date.now()}.md`);
+  const runReport = buildCombinedReport({
+    artifactDir: '/tmp/artifacts/workflow-001',
+    phaseReports: [
+      {
+        phaseName: 'self',
+        jsonPath: '/tmp/artifacts/workflow-001/self.json',
+        attemptKind: 'initial',
+        attemptNumber: 0,
+        attemptOrder: 0,
+        report: createPromptfooReport([
+          {
+            testIdx: 0,
+            promptIdx: 0,
+            success: false,
+            error: 'API error: 400 Bad Request',
+            latencyMs: 1200,
+            testCase: {
+              metadata: {
+                id: 'grounding-001',
+                suite: 'grounding',
+              },
+            },
+          },
+        ]),
+      },
+    ],
+  });
+
+  const wroteSummary = appendGithubStepSummary(runReport, stepSummaryPath);
+  const summary = fs.readFileSync(stepSummaryPath, 'utf8');
+
+  assert.equal(wroteSummary, true);
+  assert.match(summary, /## Prompt Eval Outcome/);
+  assert.match(summary, /- Status: ERROR/);
+  assert.match(summary, /ERROR grounding\/grounding-001 \[self\]/);
+  assert.match(summary, /API error: 400 Bad Request/);
+});
+
 test('listPromptfooJsonReports loads native promptfoo json outputs from an artifact directory', () => {
   const artifactDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-summary-'));
   fs.writeFileSync(path.join(artifactDir, 'self.json'), JSON.stringify(createPromptfooReport([])), 'utf8');
@@ -1021,4 +1230,52 @@ test('writeSummary writes markdown from all promptfoo reports in a directory', (
   assert.match(summary, /Recovered Errors: 0/);
   assert.match(summary, /self\.json/);
   assert.doesNotMatch(summary, /\.html/);
+});
+
+test('summary cli prints a high-signal failure block before exiting non-zero', () => {
+  const artifactDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-summary-cli-'));
+  const stepSummaryPath = path.join(artifactDir, 'step-summary.md');
+  fs.writeFileSync(
+    path.join(artifactDir, 'self.json'),
+    JSON.stringify(createPromptfooReport([
+      {
+        testIdx: 0,
+        promptIdx: 0,
+        success: false,
+        error: 'API error: 429 Too Many Requests',
+        latencyMs: 1250,
+        testCase: {
+          metadata: {
+            id: 'smoke-001',
+            suite: 'smoke',
+          },
+        },
+      },
+    ])),
+    'utf8',
+  );
+
+  const result = spawnSync('node', [
+    path.join(__dirname, 'promptfoo_summary.cjs'),
+    '--artifact-dir',
+    artifactDir,
+    '--check',
+  ], {
+    env: {
+      ...process.env,
+      GITHUB_STEP_SUMMARY: stepSummaryPath,
+    },
+    encoding: 'utf8',
+  });
+
+  const stepSummary = fs.readFileSync(stepSummaryPath, 'utf8');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /^Prompt Eval: ERROR/m);
+  assert.match(result.stdout, /Needs Attention:/);
+  assert.match(result.stdout, /ERROR smoke\/smoke-001 \[self\] reason=API error: 429 Too Many Requests/);
+  assert.match(result.stdout, /Artifact Dir: /);
+  assert.match(result.stdout, /Summary Path: /);
+  assert.match(stepSummary, /- Status: ERROR/);
+  assert.match(stepSummary, /ERROR smoke\/smoke-001 \[self\]/);
 });

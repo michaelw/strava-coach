@@ -271,7 +271,6 @@ jobs:
       - name: Run smoke eval
         id: smoke_eval
         if: steps.decide.outputs.active == 'true'
-        continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: task eval:smoke
@@ -282,10 +281,6 @@ jobs:
         with:
           name: prompt-eval-smoke
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
-
-      - name: Fail on smoke eval
-        if: steps.decide.outputs.active == 'true' && steps.smoke_eval.outcome == 'failure'
-        run: exit 1
 
   eval-targeted:
     name: Eval Targeted
@@ -362,11 +357,11 @@ jobs:
 
       - name: Run targeted eval
         id: targeted_eval
-        continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           SUITES="$(printf '%s\n' "${{ steps.suites.outputs.list }}" | awk 'NF' | sort -u | xargs)"
+          RUN_STATUS=0
           if [ -z "$SUITES" ]; then
             SUITES="smoke"
           elif ! printf '%s\n' "$SUITES" | tr ' ' '\n' | grep -qx smoke; then
@@ -374,12 +369,19 @@ jobs:
           fi
           mkdir -p "$PROMPT_EVAL_OUTPUT_DIR"
           for SUITE in $SUITES; do
-            PROMPT_EVAL_OUTPUT_PREFIX="self.$SUITE" task eval:self -- --filter-metadata suite="$SUITE"
+            if ! GITHUB_STEP_SUMMARY="" PROMPT_EVAL_OUTPUT_PREFIX="self.$SUITE" task eval:self -- --filter-metadata suite="$SUITE"; then
+              RUN_STATUS=1
+            fi
             if [ -d "evals/cases/compare/$SUITE" ]; then
-              PROMPT_EVAL_OUTPUT_PREFIX="compare.$SUITE" task eval:compare -- --filter-metadata suite="$SUITE"
+              if ! GITHUB_STEP_SUMMARY="" PROMPT_EVAL_OUTPUT_PREFIX="compare.$SUITE" task eval:compare -- --filter-metadata suite="$SUITE"; then
+                RUN_STATUS=1
+              fi
             fi
           done
-          task eval:summary -- --artifact-dir "$PROMPT_EVAL_OUTPUT_DIR"
+          if ! node evals/promptfoo/promptfoo_summary.cjs --artifact-dir "$PROMPT_EVAL_OUTPUT_DIR" --check; then
+            RUN_STATUS=1
+          fi
+          exit "$RUN_STATUS"
 
       - name: Upload targeted artifacts
         if: always()
@@ -387,10 +389,6 @@ jobs:
         with:
           name: prompt-eval-targeted
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
-
-      - name: Fail on targeted eval
-        if: steps.targeted_eval.outcome == 'failure'
-        run: exit 1
 
   nightly-full:
     name: Nightly Full
@@ -437,7 +435,6 @@ jobs:
 
       - name: Run full eval
         id: full_eval
-        continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: task eval:full
@@ -448,7 +445,3 @@ jobs:
         with:
           name: prompt-eval-full
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
-
-      - name: Fail on nightly eval
-        if: steps.full_eval.outcome == 'failure'
-        run: exit 1
