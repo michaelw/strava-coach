@@ -1,0 +1,41 @@
+baseURL: https://michaelw.github.io/strava-coach/
+title: Strava Coach
+languageCode: en-us
+theme: hugo-geekdoc
+enableRobotsTXT: true
+
+module:
+  mounts:
+    - source: content
+      target: content
+    - source: site-data
+      target: data
+    - source: layouts
+      target: layouts
+    - source: static
+      target: static
+    - source: assets
+      target: static/assets
+    - source: actions
+      target: static/actions
+    - source: data
+      target: static/data
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+
+params:
+  geekdocRepo: https://github.com/michaelw/strava-coach
+  geekdocEditPath: edit/main
+  geekdocLogo: assets/logo.png
+  geekdocSubtitle: Open-source assets for a public Strava Custom GPT
+  geekdocMenuBundle: true
+  geekdocBreadcrumb: true
+  geekdocSearch: false
+  geekdocDarkModeToggle: true
+  geekdocDarkModeDim: false
+  geekdocNextPrev: true
+  geekdocBackToTop: true
+  geekdocPrivacyPolicy: privacy-policy/

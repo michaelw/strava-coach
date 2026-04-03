@@ -1,0 +1,194 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+dotenv:
+  - .env
+
+tasks:
+  default:
+    aliases: [list, ls, help]
+    desc: List available tasks
+    silent: true
+    cmds:
+      - task --list
+
+  setup:
+    desc: Install repo tooling for local/devcontainer/CI use
+    cmds:
+      - |
+        if ! command -v rg >/dev/null 2>&1; then
+          echo "ripgrep (rg) is required for Promptfoo test discovery." >&2
+          echo "Install ripgrep locally, use the devcontainer, or ensure CI bootstraps it first." >&2
+          exit 1
+        fi
+      - |
+        if ! command -v hugo >/dev/null 2>&1; then
+          echo "Hugo is required for local site preview and production builds." >&2
+          echo "Install Hugo locally or use the devcontainer for docs work." >&2
+        fi
+      - |
+        if [ "${CI:-}" = "true" ]; then
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
+        else
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install
+        fi
+      - |
+        if command -v pre-commit >/dev/null 2>&1; then
+          if [ -z "${CI:-}" ]; then
+            GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || true)"
+            if [ -n "$GIT_DIR" ] && [ -w "$GIT_DIR/hooks" ]; then
+              pre-commit install
+            else
+              echo "Skipping pre-commit install because git hooks are not writable in this environment."
+            fi
+          fi
+        else
+          echo "pre-commit is not installed; task setup skipped hook installation."
+        fi
+
+  check:
+    desc: Run fast local quality checks
+    deps:
+      - _require_pre_commit
+    cmds:
+      - task: eval:validate
+      - task: test
+      - task: lint
+
+  lint:
+    desc: Run pre-commit across the repository
+    deps:
+      - _require_pre_commit
+    cmds:
+      - pre-commit run --all-files
+
+  test:
+    desc: Run fast local Promptfoo tests
+    cmds:
+      - npm run prompt-evals:test
+
+  eval:validate:
+    desc: Validate Promptfoo case files
+    cmds:
+      - npm run prompt-evals:validate
+
+  eval:self:
+    desc: "Run self-grading Promptfoo evals; forward native Promptfoo args with --, for example: task eval:self -- --filter-metadata suite=grounding"
+    deps:
+      - _require_openai_api_key
+    cmds:
+      - sh evals/promptfoo/run_promptfoo_phase.sh evals/promptfoo/promptfooconfig.self.yaml {{.CLI_ARGS}}
+
+  eval:compare:
+    desc: "Run baseline-comparison Promptfoo evals; forward native Promptfoo args with --, for example: task eval:compare -- --filter-metadata suite=personalization"
+    deps:
+      - _require_openai_api_key
+    cmds:
+      - sh evals/promptfoo/run_promptfoo_phase.sh evals/promptfoo/promptfooconfig.compare.yaml {{.CLI_ARGS}}
+
+  eval:smoke:
+    desc: Run the smoke Promptfoo suite
+    deps:
+      - _require_openai_api_key
+    cmds:
+      - sh evals/promptfoo/run_promptfoo_phase.sh evals/promptfoo/promptfooconfig.self.yaml --filter-metadata suite=smoke {{.CLI_ARGS}}
+
+  eval:full:
+    desc: Run the full Promptfoo suite
+    deps:
+      - _require_openai_api_key
+    cmds:
+      - |
+        OUTPUT_DIR="${PROMPT_EVAL_OUTPUT_DIR:-evals/reports/$(date -u +%Y%m%dT%H%M%SZ)-full}"
+        sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
+          evals/promptfoo/promptfooconfig.self.yaml
+        sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
+          evals/promptfoo/promptfooconfig.compare.yaml
+        node evals/promptfoo/promptfoo_summary.cjs --artifact-dir "$OUTPUT_DIR" --check
+        echo "artifact_dir=$OUTPUT_DIR"
+        echo "summary_path=$OUTPUT_DIR/summary.md"
+
+  eval:view:
+    desc: Open the Promptfoo web viewer against the local repo state
+    cmds:
+      - |
+        PROMPTFOO_CONFIG_DIR="${PROMPTFOO_CONFIG_DIR:-.promptfoo}" \
+        PROMPTFOO_DISABLE_WAL_MODE="${PROMPTFOO_DISABLE_WAL_MODE:-true}" \
+        ./node_modules/.bin/promptfoo view . {{.CLI_ARGS}}
+
+  verify:
+    desc: Run the repo's non-hosted validation suite
+    cmds:
+      - task: check
+      - task: site:build
+
+  serve:
+    desc: Start the local Hugo preview server
+    deps:
+      - _require_hugo
+    cmds:
+      - hugo server --bind 0.0.0.0 --port "${HUGO_PORT:-1313}" {{.CLI_ARGS}}
+
+  site:build:
+    desc: Build the Hugo site for production-like validation
+    deps:
+      - _require_hugo
+    cmds:
+      - |
+        HUGO_CACHEDIR="${HUGO_CACHEDIR:-${TMPDIR:-/tmp}/strava-coach-hugo-cache}" \
+        hugo --gc \
+          --baseURL "${HUGO_BASE_URL:-http://127.0.0.1:1313/}" \
+          --destination "${HUGO_DESTINATION:-public}" \
+          {{.CLI_ARGS}}
+
+  capture:strava:auth-url:
+    desc: Print the Strava OAuth authorization URL
+    cmds:
+      - node evals/capture/strava_capture.cjs auth-url
+
+  capture:strava:exchange-code:
+    desc: Exchange a Strava OAuth code and store refreshable auth locally
+    cmds:
+      - node evals/capture/strava_capture.cjs exchange-code {{.CLI_ARGS}}
+
+  capture:strava:capture:
+    desc: "Capture a raw Strava fixture bundle. No args uses defaults; pass optional args after --, for example: task capture:strava:capture -- --label private-notes --activity-id 123"
+    cmds:
+      - node evals/capture/strava_capture.cjs capture {{.CLI_ARGS}}
+
+  capture:gpt:
+    desc: "Capture a raw GPT transcript; pass args after --, for example: task capture:gpt -- --scenario evals/capture/scenarios/private-notes.yaml --label private-notes"
+    cmds:
+      - node evals/capture/gpt_capture.cjs {{.CLI_ARGS}}
+
+  capture:promote:
+    desc: "Promote a raw capture into a sanitized checked-in fixture; pass args after --, for example: task capture:promote -- --kind strava --source <raw.json> --id private-notes-run"
+    cmds:
+      - node evals/capture/promote_fixture.cjs {{.CLI_ARGS}}
+
+  _require_openai_api_key:
+    internal: true
+    cmds:
+      - |
+        if [ -z "${OPENAI_API_KEY:-}" ]; then
+          echo "OPENAI_API_KEY must be set for hosted Promptfoo tasks." >&2
+          exit 1
+        fi
+
+  _require_pre_commit:
+    internal: true
+    cmds:
+      - |
+        if ! command -v pre-commit >/dev/null 2>&1; then
+          echo "pre-commit is required for task check and task lint. Install it first (for example with pipx)." >&2
+          exit 1
+        fi
+
+  _require_hugo:
+    internal: true
+    cmds:
+      - |
+        if ! command -v hugo >/dev/null 2>&1; then
+          echo "Hugo is required for task serve and task site:build. Install Hugo or use the devcontainer." >&2
+          exit 1
+        fi

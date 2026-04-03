@@ -1,0 +1,26 @@
+description: Require the coach to use available private notes as high-priority context.
+vars:
+  athlete_profile: |
+    Experienced runner, balancing marathon build with work stress.
+  strava_fixture: production/strava/private-notes-run.json
+  user_query: |
+    Go deeper on yesterday's session.
+assert:
+  - type: not-icontains-any
+    metric: personalization
+    value:
+      - no additional context was available
+  - type: llm-rubric
+    metric: personalization
+    value: The response meaningfully incorporates the private notes about poor sleep, dehydration, or work-trip fatigue instead of ignoring them.
+  - type: llm-rubric
+    metric: grounding
+    value: The response treats the private notes as real evidence from the activity context, not as optional flavor text.
+metadata:
+  id: smoke-003
+  suite: smoke
+  priority: high
+  tags:
+    - private-notes
+    - fatigue
+  rationale: Private notes should be incorporated automatically and treated as high-priority context.

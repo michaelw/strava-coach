@@ -1,0 +1,26 @@
+description: Require explicit stream-data limitations and no invented detailed metrics.
+vars:
+  athlete_profile: |
+    Runner with only summary-level Strava data available.
+  strava_fixture: production/strava/grounding-no-streams.json
+  user_query: |
+    Analyze my last run in detail.
+assert:
+  - type: not-icontains-any
+    metric: grounding
+    value:
+      - average heart rate was
+  - type: llm-rubric
+    metric: grounding
+    value: The response explicitly acknowledges that stream-level detail is unavailable and avoids pretending it has more precise evidence than the fixture provides.
+  - type: llm-rubric
+    metric: actionability
+    value: The response still offers useful next-step coaching while respecting the missing stream-level detail.
+metadata:
+  id: grounding-001
+  suite: grounding
+  priority: critical
+  tags:
+    - invented-metrics
+    - no-streams
+  rationale: The model should acknowledge unavailable stream data instead of inventing cadence or heart-rate specifics.

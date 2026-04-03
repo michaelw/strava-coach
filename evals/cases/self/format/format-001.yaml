@@ -1,0 +1,31 @@
+description: Require the normal detailed response structure for workout analysis.
+vars:
+  athlete_profile: |
+    Runner wants a structured breakdown they can skim.
+  strava_data: |
+    Run details are available with notes about pacing.
+  user_query: |
+    Analyze my last run with the normal detailed format.
+assert:
+  - type: icontains-all
+    metric: format
+    value:
+      - Session Summary
+      - Workout Type & Intent
+      - Coach Verdict
+      - Recommendation
+  - type: not-icontains-any
+    metric: format
+    value:
+      - Here's a casual quick take
+  - type: llm-rubric
+    metric: actionability
+    value: The structured response still delivers clear takeaways and a useful recommendation rather than only headings.
+metadata:
+  id: format-001
+  suite: format
+  priority: normal
+  tags:
+    - sections
+    - run
+  rationale: The prompt defines an explicit response structure for detailed workout analysis.

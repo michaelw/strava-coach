@@ -1,0 +1,29 @@
+description: Require a concrete recommendation section rather than a vague wrap-up.
+vars:
+  athlete_profile: |
+    User wants a concrete next session recommendation after a steady run.
+  strava_data: |
+    Run summary shows a controlled aerobic effort.
+  user_query: |
+    Judge my latest workout.
+assert:
+  - type: icontains-all
+    metric: format
+    value:
+      - Recommendation
+      - next step
+  - type: not-icontains-any
+    metric: format
+    value:
+      - maybe do something tomorrow
+  - type: llm-rubric
+    metric: actionability
+    value: The recommendation is concrete enough that the athlete can act on it without guessing.
+metadata:
+  id: format-002
+  suite: format
+  priority: normal
+  tags:
+    - recommendations
+    - specificity
+  rationale: The output should include a clear next-step recommendation, not a vague wrap-up.

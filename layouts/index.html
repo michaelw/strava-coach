@@ -1,0 +1,39 @@
+{{ define "main" }}
+  <article class="gdoc-markdown" id="main-content" tabindex="-1">
+    <h1>{{ .Title }}</h1>
+    {{ .Content }}
+
+    <p>
+      This site publishes the public assets for the open-source <code>Strava Coach</code> Custom GPT.
+    </p>
+
+    <h2>Public Documents</h2>
+    <ul>
+      <li><a href="https://github.com/michaelw/strava-coach/blob/main/README.md">README</a></li>
+      <li><a href="{{ "setup/chatgpt/" | relURL }}">ChatGPT Setup</a></li>
+      <li><a href="{{ "privacy-policy/" | relURL }}">Privacy Policy</a></li>
+      <li><a href="{{ "system-prompt/" | relURL }}">System Prompt</a></li>
+    </ul>
+
+    <h2>OpenAPI Spec Links</h2>
+    <ul>
+      {{ $specs := slice }}
+      {{ range os.ReadDir "actions" }}
+        {{ $name := .Name }}
+        {{ $ext := path.Ext $name }}
+        {{ if and (not .IsDir) (in $name ".openapi.") (in (slice ".yaml" ".yml" ".json") $ext) }}
+          {{ $specs = $specs | append $name }}
+        {{ end }}
+      {{ end }}
+
+      {{ if gt (len $specs) 0 }}
+        {{ range sort $specs }}
+          {{ $url := printf "actions/%s" . | absURL }}
+          <li><a href="{{ $url }}">{{ $url }}</a></li>
+        {{ end }}
+      {{ else }}
+        <li>No OpenAPI spec files found in <code>actions/</code>.</li>
+      {{ end }}
+    </ul>
+  </article>
+{{ end }}

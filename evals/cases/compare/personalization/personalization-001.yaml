@@ -1,0 +1,34 @@
+description: Require beginner-appropriate coaching and next-step guidance.
+vars:
+  athlete_profile: |
+    Beginner runner building toward a first 10K with three runs per week.
+  strava_data: |
+    Recent runs are short and steady with no advanced metrics.
+  user_query: |
+    What's the best next step after this run?
+assert:
+  - type: icontains-all
+    metric: personalization
+    value:
+      - beginner
+      - next step
+  - type: not-icontains-any
+    metric: personalization
+    value:
+      - VO2max intervals tomorrow
+  - type: llm-rubric
+    metric: actionability
+    value: The recommendation is concrete and appropriately scaled for a beginner athlete building toward a first 10K.
+  - type: select-best
+    value: Prefer the response that gives the more beginner-appropriate next step, avoids advanced prescriptions, and offers the clearest actionable coaching for a first-10K athlete.
+repeat: 5
+metadata:
+  id: personalization-001
+  suite: personalization
+  priority: high
+  compare_gate: reliable-blocker
+  tags:
+    - beginner
+    - flaky
+    - progression
+  rationale: Recommendations should match a beginner athlete instead of prescribing advanced sessions.

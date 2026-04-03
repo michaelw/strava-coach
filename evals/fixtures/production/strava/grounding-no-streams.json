@@ -1,0 +1,57 @@
+{
+  "fixture_id": "grounding-no-streams",
+  "captured_at": "2026-03-30T00:00:00Z",
+  "sanitizer_version": "v1",
+  "source": {
+    "captured": false,
+    "note": "Production-shaped sample fixture matching Strava API response shapes.",
+    "type": "strava"
+  },
+  "requests": [
+    {
+      "endpoint": "GET /athlete",
+      "response": {
+        "id": "[redacted]",
+        "firstname": "[redacted]",
+        "resource_state": "[redacted]",
+        "sex": "M"
+      }
+    },
+    {
+      "endpoint": "GET /athlete/activities?per_page=5",
+      "response": [
+        {
+          "average_speed": 3.4,
+          "distance": 10000,
+          "elapsed_time": 3012,
+          "id": "[redacted]",
+          "moving_time": 2940,
+          "name": "Morning Run",
+          "sport_type": "Run",
+          "start_date_local": "2026-03-28T06:15:00Z"
+        }
+      ]
+    },
+    {
+      "endpoint": "GET /activities/[redacted]",
+      "response": {
+        "average_speed": 3.4,
+        "commute": false,
+        "description": "Felt controlled throughout. Streams unavailable in this export.",
+        "distance": 10000,
+        "elapsed_time": 3012,
+        "id": "[redacted]",
+        "moving_time": 2940,
+        "name": "Morning Run",
+        "sport_type": "Run",
+        "start_date_local": "2026-03-28T06:15:00Z"
+      }
+    },
+    {
+      "endpoint": "GET /activities/[redacted]/streams?keys=time,distance,latlng,altitude,velocity_smooth,heartrate,cadence,watts,temp&key_by_type=true",
+      "response": {
+        "error": "Streams unavailable."
+      }
+    }
+  ]
+}

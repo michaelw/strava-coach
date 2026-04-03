@@ -1,0 +1,18 @@
+{
+  "name": "strava-coach",
+  "private": true,
+  "scripts": {
+    "prompt-evals:validate": "PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node evals/promptfoo/validate_cases.cjs",
+    "prompt-evals:test": "PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node --test $(rg --files evals/promptfoo evals/capture -g '*.test.cjs')",
+    "prompt-evals:summary": "node evals/promptfoo/promptfoo_summary.cjs",
+    "prompt-evals:capture:strava": "node evals/capture/strava_capture.cjs",
+    "prompt-evals:capture:gpt": "node evals/capture/gpt_capture.cjs",
+    "prompt-evals:capture:promote": "node evals/capture/promote_fixture.cjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "js-yaml": "^4.1.0",
+    "playwright": "^1.53.2",
+    "promptfoo": "^0.121.3"
+  }
+}
