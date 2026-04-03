@@ -2,7 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 
-const { DEFAULT_RETRY_POLICY, readRepoConfig, readRetryPolicy, readYaml } = require('./config.cjs');
+const {
+  DEFAULT_BASELINE_CONFIG,
+  DEFAULT_RETRY_POLICY,
+  readBaselineConfig,
+  readRepoConfig,
+  readRetryPolicy,
+  readYaml,
+} = require('./config.cjs');
 
 const SELF_CONFIG_PATH = path.resolve('evals/promptfoo/promptfooconfig.self.yaml');
 const COMPARE_CONFIG_PATH = path.resolve('evals/promptfoo/promptfooconfig.compare.yaml');
@@ -57,5 +64,20 @@ test('repo config exposes retry defaults for hosted eval reruns', () => {
     error_passes: 2,
     flaky_passes: 1,
     flaky_tag: 'flaky',
+  });
+});
+
+test('repo config exposes the pinned baseline artifact source', () => {
+  const repoConfig = readRepoConfig();
+  const baselineConfig = readBaselineConfig();
+
+  assert.deepEqual(repoConfig.baseline, {
+    version: '1.0.0',
+    url: 'https://github.com/michaelw/strava-coach/releases/download/prompt-baseline-v1.0.0/strava-coach-system-prompt.md',
+  });
+  assert.deepEqual(baselineConfig, repoConfig.baseline);
+  assert.deepEqual(DEFAULT_BASELINE_CONFIG, {
+    version: '',
+    url: '',
   });
 });

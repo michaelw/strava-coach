@@ -118,6 +118,11 @@ tasks:
     cmds:
       - sh evals/promptfoo/run_promptfoo_phase.sh evals/promptfoo/promptfooconfig.compare.yaml {{.CLI_ARGS}}
 
+  eval:baseline:resolve:
+    desc: Resolve the pinned compare baseline prompt artifact into local Promptfoo state
+    cmds:
+      - node evals/prompts/resolve_baseline_prompt.cjs {{.CLI_ARGS}}
+
   eval:smoke:
     desc: Run the smoke Promptfoo suite
     deps:

@@ -1,0 +1,110 @@
+name: Publish Baseline Prompt Release
+
+on:
+  push:
+    tags:
+      - "prompt-baseline-v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semver version to publish, for example 1.1.0"
+        required: true
+        type: string
+      source_path:
+        description: "Repo-relative prompt source path. Defaults to system_prompt.md."
+        required: false
+        default: "system_prompt.md"
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  TASK_SILENT: "0"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release inputs
+        id: release
+        run: |
+          set -eu
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="prompt-baseline-v$VERSION"
+            SOURCE_PATH="${{ github.event.inputs.source_path }}"
+            if [ -z "$SOURCE_PATH" ]; then
+              SOURCE_PATH="system_prompt.md"
+            fi
+          else
+            TAG="${GITHUB_REF_NAME}"
+            VERSION="${TAG#prompt-baseline-v}"
+            SOURCE_PATH="system_prompt.md"
+          fi
+
+          case "$TAG" in
+            prompt-baseline-v[0-9]*.[0-9]*.[0-9]*)
+              ;;
+            *)
+              echo "Unsupported baseline prompt tag: $TAG" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ ! -f "$SOURCE_PATH" ]; then
+            echo "Prompt baseline source file not found: $SOURCE_PATH" >&2
+            exit 1
+          fi
+
+          ASSET_NAME="strava-coach-system-prompt.md"
+          ASSET_PATH="$RUNNER_TEMP/$ASSET_NAME"
+          cp "$SOURCE_PATH" "$ASSET_PATH"
+          SHA256="$(shasum -a 256 "$ASSET_PATH" | awk '{print $1}')"
+
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "source_path=$SOURCE_PATH"
+            echo "asset_name=$ASSET_NAME"
+            echo "asset_path=$ASSET_PATH"
+            echo "sha256=$SHA256"
+            echo "download_url=https://github.com/${{ github.repository }}/releases/download/$TAG/$ASSET_NAME"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+
+          NOTES_FILE="$(mktemp)"
+          cat >"$NOTES_FILE" <<EOF
+          Baseline prompt artifact for compare evals.
+
+          - Version: ${{ steps.release.outputs.version }}
+          - Source Path: ${{ steps.release.outputs.source_path }}
+          - Commit: ${{ github.sha }}
+          - SHA256: ${{ steps.release.outputs.sha256 }}
+          - Download URL: ${{ steps.release.outputs.download_url }}
+          EOF
+
+          if gh release view "${{ steps.release.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Baseline release ${{ steps.release.outputs.tag }} already exists." >&2
+            echo "Pinned baseline artifacts must stay immutable; publish a new semver tag instead of replacing an existing release asset." >&2
+            exit 1
+          fi
+
+          gh release create "${{ steps.release.outputs.tag }}" \
+            "${{ steps.release.outputs.asset_path }}#${{ steps.release.outputs.asset_name }}" \
+            --title "Prompt Baseline ${{ steps.release.outputs.version }}" \
+            --notes-file "$NOTES_FILE" \
+            --target "${{ github.sha }}" \
+            --latest=false
