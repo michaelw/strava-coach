@@ -8,6 +8,7 @@ const {
   aggregateLogicalTests,
   buildCombinedReport,
   buildMarkdownSummary,
+  inferReliableCompareDecision,
   inferCompareWinner,
   parseArtifactFileName,
   listPromptfooJsonReports,
@@ -30,6 +31,13 @@ test('inferCompareWinner distinguishes candidate, baseline, and unknown results'
   assert.equal(inferCompareWinner({ success: true }, { success: false }), 'candidate');
   assert.equal(inferCompareWinner({ success: false }, { success: true }), 'baseline');
   assert.equal(inferCompareWinner({ success: false }, { success: false }), 'unknown');
+});
+
+test('inferReliableCompareDecision requires enough decisive repeats and a two-vote margin', () => {
+  assert.equal(inferReliableCompareDecision({ candidate: 3, baseline: 0, tie: 0, unknown: 0 }), 'candidate');
+  assert.equal(inferReliableCompareDecision({ candidate: 0, baseline: 3, tie: 0, unknown: 0 }), 'baseline');
+  assert.equal(inferReliableCompareDecision({ candidate: 2, baseline: 1, tie: 0, unknown: 0 }), 'tie');
+  assert.equal(inferReliableCompareDecision({ candidate: 1, baseline: 1, tie: 1, unknown: 0 }), 'noisy');
 });
 
 test('parseArtifactFileName distinguishes initial and retry artifacts', () => {
@@ -102,9 +110,11 @@ test('summarizePromptfooPhaseReport collapses compare rows onto the candidate re
           reason: 'The baseline response was selected as the better answer.',
         },
         testCase: {
+          repeat: 5,
           metadata: {
             id: 'personalization-001',
             suite: 'personalization',
+            compare_gate: 'reliable-blocker',
           },
         },
       },
@@ -114,9 +124,11 @@ test('summarizePromptfooPhaseReport collapses compare rows onto the candidate re
         success: true,
         latencyMs: 1900,
         testCase: {
+          repeat: 5,
           metadata: {
             id: 'personalization-001',
             suite: 'personalization',
+            compare_gate: 'reliable-blocker',
           },
         },
       },
@@ -135,6 +147,8 @@ test('summarizePromptfooPhaseReport collapses compare rows onto the candidate re
   assert.equal(phase.totals.failed, 1);
   assert.equal(phase.totals.errors, 0);
   assert.equal(phase.tests[0].winner, 'baseline');
+  assert.equal(phase.tests[0].compareGate, 'reliable-blocker');
+  assert.equal(phase.tests[0].repeat, 5);
   assert.match(phase.tests[0].reason, /baseline response was selected/i);
   assert.equal(phase.tests[0].duration, '4.0s');
 });
@@ -152,9 +166,11 @@ test('summarizePromptfooPhaseReport ignores select-best loser rows as infrastruc
           reason: 'All assertions passed',
         },
         testCase: {
+          repeat: 5,
           metadata: {
             id: 'personalization-001',
             suite: 'personalization',
+            compare_gate: 'reliable-blocker',
           },
         },
       },
@@ -169,9 +185,11 @@ test('summarizePromptfooPhaseReport ignores select-best loser rows as infrastruc
           reason: 'Output not selected: Prefer the candidate response.',
         },
         testCase: {
+          repeat: 5,
           metadata: {
             id: 'personalization-001',
             suite: 'personalization',
+            compare_gate: 'reliable-blocker',
           },
         },
       },
@@ -315,9 +333,11 @@ test('buildCombinedReport aggregates logical tests across phases and markdown li
               reason: 'The baseline response was selected as the better answer.',
             },
             testCase: {
+              repeat: 5,
               metadata: {
                 id: 'personalization-001',
                 suite: 'personalization',
+                compare_gate: 'reliable-blocker',
               },
             },
           },
@@ -327,9 +347,11 @@ test('buildCombinedReport aggregates logical tests across phases and markdown li
             success: true,
             latencyMs: 1700,
             testCase: {
+              repeat: 5,
               metadata: {
                 id: 'personalization-001',
                 suite: 'personalization',
+                compare_gate: 'reliable-blocker',
               },
             },
           },
@@ -340,16 +362,25 @@ test('buildCombinedReport aggregates logical tests across phases and markdown li
 
   const markdown = buildMarkdownSummary(runReport);
 
-  assert.equal(runReport.result, 'FAIL');
+  assert.equal(runReport.result, 'PASS');
   assert.equal(runReport.totals.tests, 2);
-  assert.equal(runReport.totals.passed, 1);
+  assert.equal(runReport.totals.passed, 2);
   assert.equal(runReport.totals.flakyPassed, 0);
   assert.equal(runReport.totals.recoveredErrors, 0);
-  assert.equal(runReport.totals.failed, 1);
+  assert.equal(runReport.totals.failed, 0);
   assert.equal(runReport.totals.errors, 0);
+  assert.equal(runReport.tests[1].compareDecision, 'noisy');
+  assert.deepEqual(runReport.tests[1].compareCounts, {
+    candidate: 0,
+    baseline: 1,
+    tie: 0,
+    unknown: 0,
+  });
   assert.match(markdown, /grounding\/grounding-001/);
   assert.match(markdown, /personalization\/personalization-001/);
-  assert.match(markdown, /winner=baseline/);
+  assert.match(markdown, /decision=noisy/);
+  assert.match(markdown, /candidate=0 baseline=1 tie=0 unknown=0/);
+  assert.match(markdown, /gate=pass/);
   assert.match(markdown, /report\.self\.json/);
   assert.doesNotMatch(markdown, /\.html/);
 });
@@ -478,6 +509,357 @@ test('aggregateLogicalTests marks error recovery and flaky passes distinctly', (
   assert.equal(grounding.retries, 1);
   assert.equal(smoke.status, 'flaky_pass');
   assert.equal(smoke.retries, 1);
+});
+
+test('aggregateLogicalTests treats split compare repeats as non-failing tie or noisy results', () => {
+  const phases = [
+    {
+      name: 'compare.personalization',
+      attemptKind: 'initial',
+      attemptNumber: 0,
+      attemptOrder: 0,
+      tests: [
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'failed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: 'Baseline selected',
+          winner: 'baseline',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'passed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: '',
+          winner: 'candidate',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'failed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: 'Baseline selected',
+          winner: 'baseline',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+      ],
+    },
+    {
+      name: 'compare.personalization',
+      attemptKind: 'initial',
+      attemptNumber: 0,
+      attemptOrder: 0,
+      tests: [
+        {
+          id: 'personalization-003',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'failed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: 'Baseline selected',
+          winner: 'baseline',
+          tags: ['flaky'],
+          compareGate: 'advisory',
+          repeat: 3,
+        },
+        {
+          id: 'personalization-003',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'passed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: '',
+          winner: 'candidate',
+          tags: ['flaky'],
+          compareGate: 'advisory',
+          repeat: 3,
+        },
+        {
+          id: 'personalization-003',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'passed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: '',
+          winner: 'unknown',
+          tags: ['flaky'],
+          compareGate: 'advisory',
+          repeat: 3,
+        },
+      ],
+    },
+  ];
+
+  const tests = aggregateLogicalTests(phases);
+  const reliable = tests.find((entry) => entry.id === 'personalization-001');
+  const advisory = tests.find((entry) => entry.id === 'personalization-003');
+
+  assert.equal(reliable.status, 'passed');
+  assert.equal(reliable.compareDecision, 'tie');
+  assert.equal(reliable.gateStatus, 'pass');
+  assert.deepEqual(reliable.compareCounts, {
+    candidate: 1,
+    baseline: 2,
+    tie: 0,
+    unknown: 0,
+  });
+  assert.equal(advisory.status, 'passed');
+  assert.equal(advisory.compareDecision, 'noisy');
+  assert.equal(advisory.gateStatus, 'pass');
+  assert.deepEqual(advisory.compareCounts, {
+    candidate: 1,
+    baseline: 1,
+    tie: 0,
+    unknown: 1,
+  });
+});
+
+test('buildCombinedReport fails only on reliable compare losses', () => {
+  const runReport = buildCombinedReport({
+    artifactDir: '/tmp/artifacts/workflow-001',
+    phaseReports: [
+      {
+        phaseName: 'compare.personalization',
+        phaseMode: 'compare',
+        jsonPath: '/tmp/artifacts/workflow-001/compare.personalization.json',
+        attemptKind: 'initial',
+        attemptNumber: 0,
+        attemptOrder: 0,
+        report: createPromptfooReport([
+          {
+            testIdx: 0,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 0,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 1,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 1,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 2,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+          {
+            testIdx: 2,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 5,
+              metadata: {
+                id: 'personalization-001',
+                suite: 'personalization',
+                compare_gate: 'reliable-blocker',
+                tags: ['flaky'],
+              },
+            },
+          },
+        ], [{ label: 'candidate' }, { label: 'baseline' }]),
+      },
+    ],
+  });
+
+  assert.equal(runReport.result, 'FAIL');
+  assert.equal(runReport.totals.failed, 1);
+  assert.equal(runReport.tests[0].status, 'failed');
+  assert.equal(runReport.tests[0].compareDecision, 'baseline');
+  assert.equal(runReport.tests[0].gateStatus, 'fail');
+  assert.match(runReport.tests[0].reason, /Reliable compare loss/);
+});
+
+test('aggregateLogicalTests marks retried compare losses as flaky passes when retries remove a reliable loss', () => {
+  const phases = [
+    {
+      name: 'compare.personalization',
+      attemptKind: 'initial',
+      attemptNumber: 0,
+      attemptOrder: 0,
+      tests: [
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'failed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: 'Baseline selected',
+          winner: 'baseline',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'failed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: 'Baseline selected',
+          winner: 'baseline',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'failed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: 'Baseline selected',
+          winner: 'baseline',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+      ],
+    },
+    {
+      name: 'compare.personalization',
+      attemptKind: 'flaky',
+      attemptNumber: 1,
+      attemptOrder: 201,
+      tests: [
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'passed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: '',
+          winner: 'candidate',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'passed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: '',
+          winner: 'candidate',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+        {
+          id: 'personalization-001',
+          suite: 'personalization',
+          phase: 'compare.personalization',
+          status: 'passed',
+          durationMs: 1000,
+          duration: '1.0s',
+          reason: '',
+          winner: 'candidate',
+          tags: ['flaky'],
+          compareGate: 'reliable-blocker',
+          repeat: 5,
+        },
+      ],
+    },
+  ];
+
+  const tests = aggregateLogicalTests(phases);
+  assert.equal(tests[0].status, 'flaky_pass');
+  assert.equal(tests[0].compareDecision, 'tie');
+  assert.equal(tests[0].gateStatus, 'pass');
+  assert.equal(tests[0].retries, 1);
 });
 
 test('buildCombinedReport treats recovered and flaky passes as overall PASS', () => {

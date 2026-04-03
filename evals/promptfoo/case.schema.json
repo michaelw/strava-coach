@@ -106,6 +106,10 @@
         "additionalProperties": true
       }
     },
+    "repeat": {
+      "type": "integer",
+      "minimum": 1
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": false,
@@ -131,6 +135,10 @@
         },
         "rationale": {
           "type": "string"
+        },
+        "compare_gate": {
+          "type": "string",
+          "enum": ["reliable-blocker", "advisory"]
         }
       }
     }

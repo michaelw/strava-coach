@@ -54,6 +54,35 @@ test('schema accepts native promptfoo case metadata without hosted runner fields
   assert.equal(validate(payload), true);
 });
 
+test('schema accepts top-level repeat and compare gating metadata', () => {
+  const validate = compileCaseValidator(CASE_SCHEMA_PATH);
+  const filePath = writeTempYaml(
+    [
+      'description: Compare case with repeat',
+      'vars:',
+      '  athlete_profile: Runner profile',
+      '  strava_data: Inline strava data',
+      '  user_query: Analyze this run',
+      'assert:',
+      '  - type: llm-rubric',
+      '    metric: personalization',
+      '    value: The answer is personalized.',
+      '  - type: select-best',
+      '    value: Prefer the candidate response.',
+      'repeat: 3',
+      'metadata:',
+      '  id: valid-compare',
+      '  suite: personalization',
+      '  priority: high',
+      '  compare_gate: reliable-blocker',
+      '  tags:',
+      '    - sample',
+    ].join('\n'),
+  );
+  const payload = loadCase(filePath);
+  assert.equal(validate(payload), true);
+});
+
 test('schema rejects retired hosted-runner comparison metadata', () => {
   const validate = compileCaseValidator(CASE_SCHEMA_PATH);
   const filePath = writeTempYaml(validCaseYaml([
@@ -251,9 +280,110 @@ test('validateCaseFile requires select-best inside compare cases', () => {
   assert.throws(() => validateCaseFile(filePath, new Set(), validate), /must include a select-best assertion/);
 });
 
+test('validateCaseFile requires repeat and compare_gate inside compare cases', () => {
+  const validate = compileCaseValidator(CASE_SCHEMA_PATH);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-compare-repeat-'));
+  const suiteDir = path.join(tempDir, 'compare', 'personalization');
+  fs.mkdirSync(suiteDir, { recursive: true });
+  const filePath = path.join(suiteDir, 'personalization-001.yaml');
+  fs.writeFileSync(
+    filePath,
+    [
+      'description: Compare case missing repeat and compare_gate',
+      'vars:',
+      '  athlete_profile: Runner profile',
+      '  strava_data: Inline strava data',
+      '  user_query: Analyze this run',
+      'assert:',
+      '  - type: llm-rubric',
+      '    metric: personalization',
+      '    value: The answer is personalized.',
+      '  - type: select-best',
+      '    value: Prefer the candidate response.',
+      'metadata:',
+      '  id: personalization-001',
+      '  suite: personalization',
+      '  priority: high',
+      '  tags:',
+      '    - sample',
+    ].join('\n'),
+    'utf8',
+  );
+
+  assert.throws(() => validateCaseFile(filePath, new Set(), validate), /must declare a top-level repeat value/);
+});
+
+test('validateCaseFile rejects compare repeat values below the reliable threshold', () => {
+  const validate = compileCaseValidator(CASE_SCHEMA_PATH);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-compare-low-repeat-'));
+  const suiteDir = path.join(tempDir, 'compare', 'personalization');
+  fs.mkdirSync(suiteDir, { recursive: true });
+  const filePath = path.join(suiteDir, 'personalization-001.yaml');
+  fs.writeFileSync(
+    filePath,
+    [
+      'description: Compare case with repeat below threshold',
+      'vars:',
+      '  athlete_profile: Runner profile',
+      '  strava_data: Inline strava data',
+      '  user_query: Analyze this run',
+      'assert:',
+      '  - type: llm-rubric',
+      '    metric: personalization',
+      '    value: The answer is personalized.',
+      '  - type: select-best',
+      '    value: Prefer the candidate response.',
+      'repeat: 2',
+      'metadata:',
+      '  id: personalization-001',
+      '  suite: personalization',
+      '  priority: high',
+      '  compare_gate: reliable-blocker',
+      '  tags:',
+      '    - sample',
+    ].join('\n'),
+    'utf8',
+  );
+
+  assert.throws(() => validateCaseFile(filePath, new Set(), validate), /must set repeat >= 3/);
+});
+
+test('validateCaseFile rejects compare_gate on self cases', () => {
+  const validate = compileCaseValidator(CASE_SCHEMA_PATH);
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-self-compare-gate-'));
+  const suiteDir = path.join(tempDir, 'self', 'smoke');
+  fs.mkdirSync(suiteDir, { recursive: true });
+  const filePath = path.join(suiteDir, 'smoke-001.yaml');
+  fs.writeFileSync(
+    filePath,
+    [
+      'description: Self case with compare gate',
+      'vars:',
+      '  athlete_profile: Runner profile',
+      '  strava_data: Inline strava data',
+      '  user_query: Analyze this run',
+      'assert:',
+      '  - type: llm-rubric',
+      '    metric: grounding',
+      '    value: The response is grounded.',
+      'metadata:',
+      '  id: smoke-001',
+      '  suite: smoke',
+      '  priority: high',
+      '  compare_gate: advisory',
+      '  tags:',
+      '    - sample',
+    ].join('\n'),
+    'utf8',
+  );
+
+  assert.throws(() => validateCaseFile(filePath, new Set(), validate), /must not declare metadata.compare_gate/);
+});
+
 test('listCaseFiles discovers native self and compare trees', () => {
   const files = listCaseFiles(path.resolve('evals/cases'));
 
   assert.ok(files.includes(path.resolve('evals/cases/self/grounding/grounding-001.yaml')));
   assert.ok(files.includes(path.resolve('evals/cases/compare/personalization/personalization-001.yaml')));
+  assert.ok(files.includes(path.resolve('evals/cases/compare/personalization/personalization-003.yaml')));
 });

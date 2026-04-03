@@ -106,11 +106,59 @@ function inferCompareWinner(candidateRow, baselineRow) {
   return 'unknown';
 }
 
+function normalizeRepeat(value) {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null;
+  }
+  return parsed;
+}
+
+function createEmptyCompareCounts() {
+  return {
+    candidate: 0,
+    baseline: 0,
+    tie: 0,
+    unknown: 0,
+  };
+}
+
+function countCompareWinners(entries) {
+  const counts = createEmptyCompareCounts();
+  for (const entry of entries) {
+    if (entry.status === 'error') {
+      continue;
+    }
+    const winner = entry.winner || 'unknown';
+    counts[winner] = (counts[winner] || 0) + 1;
+  }
+  return counts;
+}
+
+function inferReliableCompareDecision(compareCounts) {
+  const decisive = compareCounts.candidate + compareCounts.baseline;
+  if (decisive < 3) {
+    return 'noisy';
+  }
+
+  const margin = Math.abs(compareCounts.candidate - compareCounts.baseline);
+  if (margin >= 2) {
+    return compareCounts.candidate > compareCounts.baseline ? 'candidate' : 'baseline';
+  }
+
+  return 'tie';
+}
+
+function formatCompareCounts(compareCounts) {
+  return `candidate=${compareCounts.candidate} baseline=${compareCounts.baseline} tie=${compareCounts.tie} unknown=${compareCounts.unknown}`;
+}
+
 function summarizeGroupedRows(rows, phaseMode, phaseName) {
   const sortedRows = [...rows].sort((left, right) => (left.promptIdx || 0) - (right.promptIdx || 0));
   const candidateRow = sortedRows.find((row) => row.promptIdx === 0) || sortedRows[0];
   const baselineRow = sortedRows.find((row) => row.promptIdx === 1) || null;
-  const metadata = candidateRow?.testCase?.metadata || sortedRows[0]?.testCase?.metadata || {};
+  const testCase = candidateRow?.testCase || sortedRows[0]?.testCase || {};
+  const metadata = testCase?.metadata || {};
   const durationMs = sortedRows.reduce((total, row) => total + (row.latencyMs || 0), 0);
   const infrastructureError = getInfrastructureError(candidateRow, baselineRow);
   const status = infrastructureError
@@ -127,6 +175,8 @@ function summarizeGroupedRows(rows, phaseMode, phaseName) {
     reason: status === 'passed' ? '' : getFailureReason(candidateRow, baselineRow),
     tags: Array.isArray(metadata.tags) ? metadata.tags : [],
     winner: phaseMode === 'compare' ? inferCompareWinner(candidateRow, baselineRow) : null,
+    compareGate: metadata.compare_gate || null,
+    repeat: normalizeRepeat(testCase.repeat),
   };
 }
 
@@ -200,16 +250,75 @@ function aggregateLogicalTests(phases) {
   return [...groupedTests.values()]
     .map((history) => {
       const sortedHistory = [...history].sort((left, right) => left.phaseAttemptOrder - right.phaseAttemptOrder);
-      const finalAttempt = sortedHistory[sortedHistory.length - 1];
-      const retries = Math.max(0, sortedHistory.length - 1);
-      const hadFailure = sortedHistory.some((attempt) => attempt.status === 'failed');
-      const hadError = sortedHistory.some((attempt) => attempt.status === 'error');
+      const attemptGroups = [];
+      for (const entry of sortedHistory) {
+        const lastGroup = attemptGroups[attemptGroups.length - 1];
+        if (lastGroup && lastGroup.attemptOrder === entry.phaseAttemptOrder) {
+          lastGroup.entries.push(entry);
+        } else {
+          attemptGroups.push({
+            attemptKind: entry.phaseAttemptKind,
+            attemptNumber: entry.phaseAttemptNumber,
+            attemptOrder: entry.phaseAttemptOrder,
+            entries: [entry],
+          });
+        }
+      }
 
+      const retries = Math.max(0, attemptGroups.length - 1);
+      const finalGroup = attemptGroups[attemptGroups.length - 1];
+      const finalAttempt = finalGroup.entries[finalGroup.entries.length - 1];
+      const hadErrorAttempt = attemptGroups.slice(0, -1).some((group) => group.entries.every((entry) => entry.status === 'error'));
+
+      if (finalAttempt.phase.startsWith('compare')) {
+        const compareCounts = countCompareWinners(sortedHistory);
+        const compareDecision = inferReliableCompareDecision(compareCounts);
+        const hasNonErrorCompareResult = Object.values(compareCounts).some((count) => count > 0);
+        const hadFailingAttempt = attemptGroups.slice(0, -1).some((group) => {
+          const attemptCounts = countCompareWinners(group.entries);
+          const attemptDecision = inferReliableCompareDecision(attemptCounts);
+          return finalAttempt.compareGate === 'reliable-blocker'
+            && finalAttempt.repeat >= 3
+            && attemptDecision === 'baseline';
+        });
+        const gateStatus = finalAttempt.compareGate === 'reliable-blocker'
+          && finalAttempt.repeat >= 3
+          && compareDecision === 'baseline'
+          ? 'fail'
+          : 'pass';
+
+        let finalStatus = gateStatus === 'fail' ? 'failed' : 'passed';
+        if (!hasNonErrorCompareResult) {
+          finalStatus = 'error';
+        } else if (gateStatus !== 'fail') {
+          if (hadFailingAttempt) {
+            finalStatus = 'flaky_pass';
+          } else if (hadErrorAttempt) {
+            finalStatus = 'recovered_error';
+          }
+        }
+
+        return {
+          ...finalAttempt,
+          status: finalStatus,
+          retries,
+          attemptCount: attemptGroups.length,
+          compareCounts,
+          compareDecision,
+          decisiveRepeatCount: compareCounts.candidate + compareCounts.baseline,
+          gateStatus,
+          reason: finalStatus === 'failed'
+            ? `Reliable compare loss: decision=${compareDecision}; ${formatCompareCounts(compareCounts)}`
+            : (finalStatus === 'error' ? finalAttempt.reason : ''),
+        };
+      }
+
+      const hadFailureAttempt = attemptGroups.slice(0, -1).some((group) => group.entries.some((entry) => entry.status === 'failed'));
       let finalStatus = finalAttempt.status;
       if (finalAttempt.status === 'passed') {
-        if (hadFailure) {
+        if (hadFailureAttempt) {
           finalStatus = 'flaky_pass';
-        } else if (hadError) {
+        } else if (hadErrorAttempt) {
           finalStatus = 'recovered_error';
         }
       }
@@ -218,7 +327,7 @@ function aggregateLogicalTests(phases) {
         ...finalAttempt,
         status: finalStatus,
         retries,
-        attemptCount: sortedHistory.length,
+        attemptCount: attemptGroups.length,
       };
     })
     .sort((left, right) => `${left.suite}/${left.id}`.localeCompare(`${right.suite}/${right.id}`));
@@ -299,6 +408,15 @@ function buildMarkdownSummary(runReport) {
       }
       if (test.winner) {
         parts.push(`winner=${test.winner}`);
+      }
+      if (test.compareDecision) {
+        parts.push(`decision=${test.compareDecision}`);
+      }
+      if (test.compareCounts) {
+        parts.push(formatCompareCounts(test.compareCounts));
+      }
+      if (test.gateStatus) {
+        parts.push(`gate=${test.gateStatus}`);
       }
       if (test.reason) {
         parts.push(`reason: ${test.reason}`);
@@ -412,6 +530,7 @@ module.exports = {
   buildMarkdownSummary,
   formatDuration,
   getPromptfooRows,
+  inferReliableCompareDecision,
   inferCompareWinner,
   parseArtifactFileName,
   listPromptfooJsonReports,

@@ -18,11 +18,16 @@ assert:
   - type: llm-rubric
     metric: actionability
     value: The follow-up advice uses the ride to support the athlete's cautious return to running rather than replacing the run plan outright.
+  - type: select-best
+    value: Prefer the response that better connects the ride advice to a cautious return-to-run progression and avoids treating cycling as a permanent replacement for running.
+repeat: 3
 metadata:
   id: personalization-003
   suite: personalization
   priority: normal
+  compare_gate: advisory
   tags:
     - cycling
+    - flaky
     - injury-management
   rationale: The coach should connect cycling advice to the athlete's run-return context.

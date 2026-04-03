@@ -44,6 +44,11 @@ Required fields:
 - `metadata.suite`
 - `metadata.priority`
 
+Compare-case additions:
+
+- top-level `repeat`
+- `metadata.compare_gate`
+
 ### Current Mode Split
 
 Self-grading:
@@ -61,9 +66,15 @@ Self-grading:
 Baseline comparison:
 
 - `personalization-001`
+- `personalization-003`
 
 Comparison cases encode the pairwise comparison directly in the case YAML with
 Promptfoo assertions such as `select-best`.
+
+Use `self` when the case is a hard product requirement that should stand on its
+own without reference to a baseline answer. Use `compare` when the main question
+is relative coaching quality or whether the candidate prompt is meaningfully
+better than the published baseline.
 
 ## Local Setup
 
@@ -94,6 +105,43 @@ Hosted retry defaults live in [`evals/config.yaml`](/Users/michaelw/Documents/Co
 Infrastructure errors such as API failures and timeouts are retried
 automatically. Assertion failures are only retried for cases tagged with the
 configured flaky tag.
+
+## Compare Reliability
+
+Compare runs stay Promptfoo-native, but the compare gate now blocks only on
+reliable baseline wins.
+
+Compare policy:
+
+- compare cases must live under `evals/cases/compare/...`
+- compare cases must include native Promptfoo `select-best`
+- compare cases must set top-level `repeat >= 3`
+- compare cases must set `metadata.compare_gate` to `reliable-blocker` or `advisory`
+
+Reliable compare blocker:
+
+- the case is a compare case
+- `metadata.compare_gate` is `reliable-blocker`
+- the aggregated result is `baseline` after repeats and retries
+
+Reliable decision rule:
+
+- count only decisive repeat outcomes: `candidate` or `baseline`
+- require at least 3 decisive outcomes
+- require a margin of at least 2 votes to call a winner
+- otherwise classify the result as `tie` or `noisy`
+
+CI behavior:
+
+- `baseline` fails the run only for `reliable-blocker` compare cases
+- `tie` and `noisy` remain non-failing in v1
+- compare cases tagged with the configured flaky tag are still retried through the existing flaky-retry flow
+
+`summary.md` shows compare decisions with explicit counts, for example:
+
+- `decision=candidate|baseline|tie|noisy`
+- `candidate=<n> baseline=<n> tie=<n> unknown=<n>`
+- `gate=pass|fail`
 
 ## Native Promptfoo Commands
 

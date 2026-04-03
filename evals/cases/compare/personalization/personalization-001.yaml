@@ -21,10 +21,12 @@ assert:
     value: The recommendation is concrete and appropriately scaled for a beginner athlete building toward a first 10K.
   - type: select-best
     value: Prefer the response that gives the more beginner-appropriate next step, avoids advanced prescriptions, and offers the clearest actionable coaching for a first-10K athlete.
+repeat: 5
 metadata:
   id: personalization-001
   suite: personalization
   priority: high
+  compare_gate: reliable-blocker
   tags:
     - beginner
     - flaky

@@ -10,6 +10,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const CASES_ROOT = path.join(ROOT, 'evals', 'cases');
 const CASE_SCHEMA_PATH = path.join(ROOT, 'evals', 'promptfoo', 'case.schema.json');
 const VALID_CASE_MODES = new Set(['self', 'compare']);
+const VALID_COMPARE_GATES = new Set(['reliable-blocker', 'advisory']);
 
 function assert(condition, message) {
   if (!condition) {
@@ -81,8 +82,21 @@ function validateCaseFile(filePath, seenIds, validate) {
   const hasSelectBestAssertion = testCase.assert.some((entry) => entry?.type === 'select-best');
   if (modeDir === 'compare') {
     assert(hasSelectBestAssertion, `${filePath} compare cases must include a select-best assertion`);
+    assert(Number.isInteger(testCase.repeat), `${filePath} compare cases must declare a top-level repeat value`);
+    assert(testCase.repeat >= 3, `${filePath} compare cases must set repeat >= 3`);
+    assert(
+      VALID_COMPARE_GATES.has(testCase.metadata.compare_gate),
+      `${filePath} compare cases must set metadata.compare_gate to one of: ${[...VALID_COMPARE_GATES].join(', ')}`,
+    );
+    if (testCase.metadata.compare_gate === 'reliable-blocker') {
+      assert(testCase.repeat >= 3, `${filePath} reliable-blocker compare cases must set repeat >= 3`);
+    }
   } else {
     assert(!hasSelectBestAssertion, `${filePath} self cases must not include select-best assertions`);
+    assert(
+      typeof testCase.metadata.compare_gate === 'undefined',
+      `${filePath} self cases must not declare metadata.compare_gate`,
+    );
   }
   assert(!seenIds.has(testCase.metadata.id), `Duplicate case id: ${testCase.metadata.id}`);
   seenIds.add(testCase.metadata.id);

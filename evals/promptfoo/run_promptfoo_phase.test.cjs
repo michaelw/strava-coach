@@ -197,6 +197,19 @@ test('helper retries flaky failures only for tagged cases', () => {
   assert.equal(invocations[1][invocations[1].indexOf('-o') + 1], path.join(outputDir, 'self.retry-flaky.1.json'));
 });
 
+test('helper retries flaky compare failures only for tagged compare cases', () => {
+  const { result, invocations, outputDir } = runHelper(
+    [SCRIPT_PATH, 'evals/promptfoo/promptfooconfig.compare.yaml'],
+    { FAKE_PROMPTFOO_BEHAVIOR: 'flaky-fail-then-pass' },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(invocations.length, 2);
+  assert.ok(invocations[1].includes('--filter-failing-only'));
+  assert.ok(invocations[1].includes('tags=flaky'));
+  assert.equal(invocations[1][invocations[1].indexOf('-o') + 1], path.join(outputDir, 'compare.retry-flaky.1.json'));
+});
+
 test('helper honors env overrides over config defaults', () => {
   const { result, invocations } = runHelper(
     [SCRIPT_PATH, 'evals/promptfoo/promptfooconfig.self.yaml'],
