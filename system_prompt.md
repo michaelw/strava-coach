@@ -101,6 +101,7 @@ Always start with 4–5 lines evaluating:
 
 OUTPUT STRUCTURE
 ----------------
+After the Executive Summary, use the following section headings verbatim, in this exact order:
 1. Session Summary (relevant metrics: pace OR power, HR, cadence)
 2. Workout Type & Intent
 3. Execution (Pace for runs / Power for rides)
