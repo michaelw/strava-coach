@@ -83,6 +83,33 @@ jobs:
             core.info(hasNewCommit ? 'New commit detected; running nightly eval.' : 'No new commit since last nightly; skipping expensive nightly eval.');
             core.setOutput('nightly_has_new_commit', hasNewCommit ? 'true' : 'false');
 
+  detect-trusted-pr:
+    name: Detect Trusted PR
+    runs-on: ubuntu-latest
+    outputs:
+      trusted_owner_pr: ${{ steps.decide.outputs.trusted_owner_pr }}
+
+    steps:
+      - name: Decide whether this PR is trusted for hosted evals
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || '' }}
+          PR_USER_LOGIN: ${{ github.event.pull_request.user.login || '' }}
+          REPOSITORY: ${{ github.repository }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          TRUSTED="false"
+          if [ "$EVENT_NAME" = "pull_request" ] &&
+             [ "$PR_HEAD_REPO" = "$REPOSITORY" ] &&
+             [ "$PR_USER_LOGIN" = "$REPOSITORY_OWNER" ] &&
+             [ "$GITHUB_ACTOR" = "$REPOSITORY_OWNER" ]; then
+            TRUSTED="true"
+          fi
+
+          echo "trusted_owner_pr=$TRUSTED" >> "$GITHUB_OUTPUT"
+
   prompt-eval-gate:
     name: Prompt Eval Gate
     runs-on: ubuntu-latest
@@ -157,75 +184,112 @@ jobs:
         if: steps.decide.outputs.active == 'true'
         run: task setup
 
-      - name: Validate cases
+      - name: Run prompt-domain CI checks
         if: steps.decide.outputs.active == 'true'
-        run: task eval:validate
-
-      - name: Run fast Promptfoo tests
-        if: steps.decide.outputs.active == 'true'
-        run: task test
+        run: task ci:prompt
 
   eval-smoke:
     name: Eval Smoke
     runs-on: ubuntu-latest
     needs:
       - detect-prompt-eval-changes
+      - detect-trusted-pr
       - prompt-eval-gate
     environment: openai-ci
     env:
       PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke
       PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke
     if: |
+      github.event_name == 'pull_request' ||
       (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
 
     steps:
+      - name: Decide whether to run smoke eval
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PROMPT_EVAL_CHANGED: ${{ needs.detect-prompt-eval-changes.outputs.prompt_eval_changed }}
+          TRUSTED_OWNER_PR: ${{ needs.detect-trusted-pr.outputs.trusted_owner_pr }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            ACTIVE="true"
+            REASON="manual dispatch on main"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            ACTIVE="true"
+            REASON="trusted main push with prompt-eval changes"
+          elif [ "$TRUSTED_OWNER_PR" = "true" ] && [ "$PROMPT_EVAL_CHANGED" = "true" ]; then
+            ACTIVE="true"
+            REASON="trusted owner PR with prompt-eval changes"
+          elif [ "$TRUSTED_OWNER_PR" != "true" ]; then
+            ACTIVE="false"
+            REASON="untrusted PR"
+          else
+            ACTIVE="false"
+            REASON="no prompt-eval inputs changed"
+          fi
+
+          echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Skip smoke eval
+        if: steps.decide.outputs.active != 'true'
+        run: |
+          echo "Smoke eval skipped: ${{ steps.decide.outputs.reason }}."
+
       - name: Checkout
+        if: steps.decide.outputs.active == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Set up Task
+        if: steps.decide.outputs.active == 'true'
         uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3
         with:
           version: "3.x"
 
       - name: Set up Node
+        if: steps.decide.outputs.active == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
           cache: "npm"
 
       - name: Set up ripgrep
+        if: steps.decide.outputs.active == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y ripgrep
           rg --version
 
       - name: Set up repo tooling
+        if: steps.decide.outputs.active == 'true'
         run: task setup
 
       - name: Mask OpenAI API key
+        if: steps.decide.outputs.active == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: echo "::add-mask::$OPENAI_API_KEY"
 
       - name: Run smoke eval
         id: smoke_eval
+        if: steps.decide.outputs.active == 'true'
         continue-on-error: true
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: task eval:smoke
 
       - name: Upload smoke artifacts
-        if: always()
+        if: always() && steps.decide.outputs.active == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: prompt-eval-smoke
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
 
       - name: Fail on smoke eval
-        if: steps.smoke_eval.outcome == 'failure'
+        if: steps.decide.outputs.active == 'true' && steps.smoke_eval.outcome == 'failure'
         run: exit 1
 
   eval-targeted:
@@ -233,12 +297,17 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - detect-prompt-eval-changes
+      - detect-trusted-pr
       - prompt-eval-gate
     environment: openai-ci
     env:
       PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-targeted
       PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-targeted
-    if: github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true'
+    if: |
+      (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
+      (github.event_name == 'pull_request' &&
+       needs.detect-trusted-pr.outputs.trusted_owner_pr == 'true' &&
+       needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true')
 
     steps:
       - name: Checkout
@@ -315,7 +384,7 @@ jobs:
               PROMPT_EVAL_OUTPUT_PREFIX="compare.$SUITE" task eval:compare -- --filter-metadata suite="$SUITE"
             fi
           done
-          node evals/promptfoo/promptfoo_summary.cjs --artifact-dir "$PROMPT_EVAL_OUTPUT_DIR"
+          task eval:summary -- --artifact-dir "$PROMPT_EVAL_OUTPUT_DIR"
 
       - name: Upload targeted artifacts
         if: always()

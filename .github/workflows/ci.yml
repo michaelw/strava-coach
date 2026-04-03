@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
 
       - name: Set up Task
         uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3
@@ -61,5 +63,16 @@ jobs:
       - name: Set up repo tooling
         run: task setup
 
-      - name: Run repo checks
-        run: task verify
+      - name: Run repo checks for pull requests
+        if: github.event_name == 'pull_request'
+        env:
+          PRE_COMMIT_SCOPE: changed
+          PRE_COMMIT_FROM_REF: ${{ github.event.pull_request.base.sha }}
+          PRE_COMMIT_TO_REF: ${{ github.event.pull_request.head.sha }}
+        run: task ci:repo
+
+      - name: Run repo checks for pushes
+        if: github.event_name != 'pull_request'
+        env:
+          PRE_COMMIT_SCOPE: all
+        run: task ci:repo
