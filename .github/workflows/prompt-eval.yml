@@ -166,8 +166,8 @@ jobs:
       - prompt-eval-gate
     environment: openai-ci
     env:
-      PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke
-      PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke
+      PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke
+      PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke
     if: |
       (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
@@ -223,8 +223,8 @@ jobs:
       - prompt-eval-gate
     environment: openai-ci
     env:
-      PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-targeted
-      PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-targeted
+      PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-targeted
+      PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-targeted
     if: github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true'
 
     steps:
@@ -317,8 +317,8 @@ jobs:
       - prompt-eval-gate
     environment: openai-ci
     env:
-      PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-full
-      PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-full
+      PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-full
+      PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-full
     if: |
       (github.event_name == 'schedule' && needs.detect-nightly-work.outputs.nightly_has_new_commit == 'true') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.event.inputs.run_nightly_full == 'true')
