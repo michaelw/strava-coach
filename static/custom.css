@@ -61,7 +61,7 @@
   font-size: 0.95rem;
 }
 
-.prompt-source pre {
+.prompt-source__block {
   position: relative;
   padding-top: 3.5rem;
 }
@@ -139,7 +139,7 @@
 }
 
 @media screen and (max-width: 45rem) {
-  .prompt-source pre {
+  .prompt-source__block {
     padding-top: 4.75rem;
   }
 

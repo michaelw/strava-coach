@@ -57,7 +57,7 @@ Keep the main behavior and policy in `system_prompt.md`. Treat prompt updates li
 - keep edits specific and reviewable
 - document major behavioral changes in commit history
 
-The published copy-ready page lives at:
+The published system prompt page renders that raw file in a copyable block at:
 
 - `https://<github-username>.github.io/<repo-name>/system-prompt/`
 

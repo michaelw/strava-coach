@@ -1,10 +1,10 @@
 (() => {
-  const codeBlock = document.querySelector(".prompt-source pre");
-  if (!codeBlock || !navigator.clipboard) {
+  const promptBlock = document.querySelector(".prompt-source [data-prompt-source-block]");
+  if (!promptBlock || !navigator.clipboard) {
     return;
   }
 
-  const textNode = codeBlock.querySelector("code");
+  const textNode = promptBlock.querySelector("code");
   if (!textNode) {
     return;
   }
@@ -21,8 +21,8 @@
   toast.setAttribute("aria-live", "polite");
   toast.textContent = "Copied!";
 
-  codeBlock.appendChild(button);
-  codeBlock.appendChild(toast);
+  promptBlock.appendChild(button);
+  promptBlock.appendChild(toast);
 
   let hideToastTimer = null;
 

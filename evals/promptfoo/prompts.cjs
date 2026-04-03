@@ -6,10 +6,8 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const CANDIDATE_PROMPT_PATH = path.join(ROOT, 'system_prompt.md');
 const BASELINE_PROMPT_PATH = path.join(ROOT, 'evals', 'prompts', 'system_prompt.baseline.md');
 
-function extractPromptText(filePath) {
-  const text = fs.readFileSync(filePath, 'utf8').trim();
-  const match = text.match(/```(?:md|markdown)?\n([\s\S]*?)\n```/);
-  return (match ? match[1] : text).trim();
+function readPromptText(filePath) {
+  return fs.readFileSync(filePath, 'utf8').trim();
 }
 
 function buildScenarioPrompt(promptText, vars) {
@@ -43,11 +41,11 @@ function buildScenarioPrompt(promptText, vars) {
 }
 
 function candidatePrompt(context) {
-  return buildScenarioPrompt(extractPromptText(CANDIDATE_PROMPT_PATH), context.vars);
+  return buildScenarioPrompt(readPromptText(CANDIDATE_PROMPT_PATH), context.vars);
 }
 
 function baselinePrompt(context) {
-  return buildScenarioPrompt(extractPromptText(BASELINE_PROMPT_PATH), context.vars);
+  return buildScenarioPrompt(readPromptText(BASELINE_PROMPT_PATH), context.vars);
 }
 
 module.exports = {
