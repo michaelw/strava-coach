@@ -35,6 +35,19 @@ function listCaseFiles(root = CASES_ROOT) {
   return filePaths.sort();
 }
 
+function isCaseFilePath(filePath, casesRoot = CASES_ROOT) {
+  const normalizedPath = path.normalize(filePath);
+  return normalizedPath.startsWith(path.normalize(casesRoot) + path.sep) && normalizedPath.endsWith('.yaml');
+}
+
+function resolveRequestedCaseFiles(requestedFiles, cwd = process.cwd(), casesRoot = CASES_ROOT) {
+  return [...new Set(
+    requestedFiles
+      .map((filePath) => path.resolve(cwd, filePath))
+      .filter((filePath) => isCaseFilePath(filePath, casesRoot)),
+  )].sort();
+}
+
 function compileCaseValidator(schemaPath = CASE_SCHEMA_PATH) {
   const ajv = new Ajv2020({
     allErrors: true,
@@ -115,7 +128,43 @@ function validateAllCases({ files = listCaseFiles(CASES_ROOT), schemaPath = CASE
   return cases;
 }
 
-function main() {
+function collectExistingIds(files) {
+  const seenIds = new Set();
+  for (const filePath of files) {
+    try {
+      const testCase = loadCase(filePath);
+      if (typeof testCase?.metadata?.id === 'string' && testCase.metadata.id.length > 0) {
+        seenIds.add(testCase.metadata.id);
+      }
+    } catch {
+      // Full-tree CI remains the backstop for unrelated parse failures.
+    }
+  }
+  return seenIds;
+}
+
+function validateRequestedCases({ requestedFiles = [], cwd = process.cwd(), schemaPath = CASE_SCHEMA_PATH, casesRoot = CASES_ROOT } = {}) {
+  const files = resolveRequestedCaseFiles(requestedFiles, cwd, casesRoot);
+  if (!files.length) {
+    return [];
+  }
+
+  const allFiles = listCaseFiles(casesRoot);
+  const selectedFiles = new Set(files);
+  const seenIds = collectExistingIds(allFiles.filter((filePath) => !selectedFiles.has(filePath)));
+  const validate = compileCaseValidator(schemaPath);
+
+  return files.map((filePath) => validateCaseFile(filePath, seenIds, validate));
+}
+
+function main(argv = process.argv.slice(2)) {
+  if (argv.length > 0) {
+    const files = resolveRequestedCaseFiles(argv);
+    validateRequestedCases({ requestedFiles: argv });
+    console.log(`validated_cases=${files.length}`);
+    return;
+  }
+
   const files = listCaseFiles(CASES_ROOT);
   validateAllCases({ files });
   console.log(`validated_cases=${files.length}`);
@@ -128,9 +177,13 @@ if (require.main === module) {
 module.exports = {
   CASE_SCHEMA_PATH,
   compileCaseValidator,
+  collectExistingIds,
   formatAjvErrors,
+  isCaseFilePath,
   listCaseFiles,
   loadCase,
+  resolveRequestedCaseFiles,
   validateAllCases,
   validateCaseFile,
+  validateRequestedCases,
 };

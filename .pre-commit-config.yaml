@@ -37,8 +37,14 @@ repos:
 
   - repo: local
     hooks:
-      - id: validate-prompt-eval-cases
-        name: Validate prompt eval cases
+      - id: validate-changed-case-yaml-files
+        name: Validate changed case YAML files
+        entry: task eval:validate --
+        language: system
+        files: ^evals/cases/.+\.yaml$
+      - id: validate-full-case-tree-after-validator-changes
+        name: Validate full case tree after validator/schema/fixture changes
         entry: task eval:validate
         language: system
         pass_filenames: false
+        files: ^(evals/promptfoo/(case\.schema\.json|fixtures\.cjs|validate_cases\.cjs)|evals/fixtures/production/)

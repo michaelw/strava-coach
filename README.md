@@ -141,12 +141,17 @@ Use the Taskfile as the stable entrypoint for local validation:
 - `task site:build` validates the production Hugo build
 - `task verify` runs the full non-hosted validation suite
 
+A concise “what runs when” guide for developers and QA lives in
+[`docs/CI.md`](./docs/CI.md).
+Use `task` as the canonical interface for repo operations; raw scripts and
+`pre-commit` hooks are implementation details.
+
 Prompt regression tooling for `system_prompt.md` is documented in
 [`docs/prompt-evals.md`](./docs/prompt-evals.md). That guide covers the
 Promptfoo-native case format, the native `promptfoo eval/view` workflow,
 smoke and full eval commands, Promptfoo-first reporting, the
 production-shaped fixture capture pipeline, and the security model for trusted
-vs forked pull requests.
+same-repo vs forked pull requests.
 
 ## Local Pages Preview
 
@@ -195,6 +200,9 @@ If you want the fast non-hosted checks without the Hugo production build, run:
 ```bash
 task check
 ```
+
+For guidance on which checks to run before pushing different kinds of changes,
+see [`docs/CI.md`](./docs/CI.md).
 
 If you only need prompt-eval workflows after setup:
 

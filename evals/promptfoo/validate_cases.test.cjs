@@ -6,10 +6,15 @@ const path = require('path');
 
 const {
   CASE_SCHEMA_PATH,
+  collectExistingIds,
   compileCaseValidator,
+  isCaseFilePath,
   listCaseFiles,
   loadCase,
+  resolveRequestedCaseFiles,
+  validateAllCases,
   validateCaseFile,
+  validateRequestedCases,
 } = require('./validate_cases.cjs');
 
 function writeTempYaml(contents, name = 'case.yaml') {
@@ -386,4 +391,111 @@ test('listCaseFiles discovers native self and compare trees', () => {
   assert.ok(files.includes(path.resolve('evals/cases/self/grounding/grounding-001.yaml')));
   assert.ok(files.includes(path.resolve('evals/cases/compare/personalization/personalization-001.yaml')));
   assert.ok(files.includes(path.resolve('evals/cases/compare/personalization/personalization-003.yaml')));
+});
+
+test('isCaseFilePath matches only tracked case yaml files under evals/cases', () => {
+  assert.equal(isCaseFilePath(path.resolve('evals/cases/self/grounding/grounding-001.yaml')), true);
+  assert.equal(isCaseFilePath(path.resolve('evals/promptfoo/case.schema.json')), false);
+  assert.equal(isCaseFilePath(path.resolve('README.md')), false);
+});
+
+test('resolveRequestedCaseFiles normalizes case paths and ignores non-case files', () => {
+  const cwd = path.resolve('.');
+  const files = resolveRequestedCaseFiles(
+    [
+      'evals/cases/self/grounding/grounding-001.yaml',
+      './evals/cases/self/grounding/grounding-001.yaml',
+      'README.md',
+    ],
+    cwd,
+  );
+
+  assert.deepEqual(files, [path.resolve('evals/cases/self/grounding/grounding-001.yaml')]);
+});
+
+test('collectExistingIds indexes metadata ids from existing files', () => {
+  const ids = collectExistingIds([
+    path.resolve('evals/cases/self/grounding/grounding-001.yaml'),
+    path.resolve('evals/cases/self/smoke/smoke-001.yaml'),
+  ]);
+
+  assert.equal(ids.has('grounding-001'), true);
+  assert.equal(ids.has('smoke-001'), true);
+});
+
+test('validateRequestedCases validates only requested case files', () => {
+  const cases = validateRequestedCases({
+    requestedFiles: [
+      'evals/cases/self/grounding/grounding-001.yaml',
+      'README.md',
+    ],
+  });
+
+  assert.equal(cases.length, 1);
+  assert.equal(cases[0].metadata.id, 'grounding-001');
+});
+
+test('validateRequestedCases catches duplicate ids against unchanged files', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-requested-'));
+  const casesRoot = path.join(tempDir, 'evals', 'cases');
+  const existingSuiteDir = path.join(casesRoot, 'self', 'smoke');
+  const changedSuiteDir = path.join(casesRoot, 'self', 'grounding');
+  fs.mkdirSync(existingSuiteDir, { recursive: true });
+  fs.mkdirSync(changedSuiteDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(existingSuiteDir, 'smoke-001.yaml'),
+    [
+      'description: Existing unchanged case',
+      'vars:',
+      '  athlete_profile: Runner profile',
+      '  strava_fixture: production/strava/grounding-no-streams.json',
+      '  user_query: Analyze this run',
+      'assert:',
+      '  - type: llm-rubric',
+      '    metric: grounding',
+      '    value: The response is grounded.',
+      'metadata:',
+      '  id: grounding-001',
+      '  suite: smoke',
+      '  priority: high',
+      '  tags:',
+      '    - sample',
+    ].join('\n'),
+    'utf8',
+  );
+  const filePath = path.join(changedSuiteDir, 'grounding-001.yaml');
+  fs.writeFileSync(
+    filePath,
+    [
+      'description: Duplicate changed case',
+      'vars:',
+      '  athlete_profile: Runner profile',
+      '  strava_fixture: production/strava/grounding-no-streams.json',
+      '  user_query: Analyze this run',
+      'assert:',
+      '  - type: llm-rubric',
+      '    metric: grounding',
+      '    value: The response is grounded.',
+      'metadata:',
+      '  id: grounding-001',
+      '  suite: grounding',
+      '  priority: high',
+      '  tags:',
+      '    - sample',
+    ].join('\n'),
+    'utf8',
+  );
+
+  assert.throws(
+    () => validateRequestedCases({ requestedFiles: [filePath], cwd: tempDir, casesRoot }),
+    /Duplicate case id: grounding-001/,
+  );
+});
+
+test('validateAllCases accepts an explicit file list', () => {
+  const files = [path.resolve('evals/cases/self/grounding/grounding-001.yaml')];
+  const cases = validateAllCases({ files });
+
+  assert.equal(cases.length, 1);
+  assert.equal(cases[0].metadata.id, 'grounding-001');
 });

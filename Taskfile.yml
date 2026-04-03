@@ -47,30 +47,58 @@ tasks:
         fi
 
   check:
-    desc: Run fast local quality checks
-    deps:
-      - _require_pre_commit
+    desc: Run fast local Promptfoo validation and tests
     cmds:
       - task: eval:validate
       - task: test
-      - task: lint
 
   lint:
-    desc: Run pre-commit across the repository
+    desc: Run pre-commit against the current staged/default file set
+    deps:
+      - _require_pre_commit
+    cmds:
+      - pre-commit run
+
+  lint:all:
+    desc: Run pre-commit across the full repository
     deps:
       - _require_pre_commit
     cmds:
       - pre-commit run --all-files
 
+  lint:changed:
+    desc: Run pre-commit against a CI diff using PRE_COMMIT_FROM_REF and PRE_COMMIT_TO_REF
+    deps:
+      - _require_pre_commit
+      - _require_pre_commit_diff_refs
+    cmds:
+      - pre-commit run --from-ref "${PRE_COMMIT_FROM_REF}" --to-ref "${PRE_COMMIT_TO_REF}"
+
+  ci:repo:
+    desc: Run repo-wide non-hosted CI checks
+    cmds:
+      - |
+        if [ "${PRE_COMMIT_SCOPE:-all}" = "changed" ]; then
+          task lint:changed
+        else
+          task lint:all
+        fi
+      - task: site:build
+
+  ci:prompt:
+    desc: Run prompt-domain CI checks
+    cmds:
+      - task: check
+
   test:
     desc: Run fast local Promptfoo tests
     cmds:
-      - npm run prompt-evals:test
+      - PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node --test $(rg --files evals/promptfoo evals/capture -g '*.test.cjs')
 
   eval:validate:
     desc: Validate Promptfoo case files
     cmds:
-      - npm run prompt-evals:validate
+      - PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node evals/promptfoo/validate_cases.cjs {{.CLI_ARGS}}
 
   eval:self:
     desc: "Run self-grading Promptfoo evals; forward native Promptfoo args with --, for example: task eval:self -- --filter-metadata suite=grounding"
@@ -104,9 +132,14 @@ tasks:
           evals/promptfoo/promptfooconfig.self.yaml
         sh evals/promptfoo/run_promptfoo_phase.sh --output-dir "$OUTPUT_DIR" --skip-summary \
           evals/promptfoo/promptfooconfig.compare.yaml
-        node evals/promptfoo/promptfoo_summary.cjs --artifact-dir "$OUTPUT_DIR" --check
+        task eval:summary -- --artifact-dir "$OUTPUT_DIR" --check
         echo "artifact_dir=$OUTPUT_DIR"
         echo "summary_path=$OUTPUT_DIR/summary.md"
+
+  eval:summary:
+    desc: Summarize Promptfoo artifacts and optionally enforce report checks
+    cmds:
+      - node evals/promptfoo/promptfoo_summary.cjs {{.CLI_ARGS}}
 
   eval:view:
     desc: Open the Promptfoo web viewer against the local repo state
@@ -119,6 +152,7 @@ tasks:
   verify:
     desc: Run the repo's non-hosted validation suite
     cmds:
+      - task: lint:all
       - task: check
       - task: site:build
 
@@ -181,6 +215,15 @@ tasks:
       - |
         if ! command -v pre-commit >/dev/null 2>&1; then
           echo "pre-commit is required for task check and task lint. Install it first (for example with pipx)." >&2
+          exit 1
+        fi
+
+  _require_pre_commit_diff_refs:
+    internal: true
+    cmds:
+      - |
+        if [ -z "${PRE_COMMIT_FROM_REF:-}" ] || [ -z "${PRE_COMMIT_TO_REF:-}" ]; then
+          echo "PRE_COMMIT_FROM_REF and PRE_COMMIT_TO_REF must be set for task lint:changed." >&2
           exit 1
         fi
 

@@ -5,6 +5,10 @@ prompting, assertions, grading, report generation, and the browser viewer. The
 repo only adds case validation, a few convenience Taskfile aliases, and a short
 Markdown summary for CI comments.
 
+Use `task` as the canonical human-facing interface for prompt-eval operations.
+Raw `node` scripts are internal building blocks used by Task and selected
+pre-commit hooks.
+
 ## Purpose
 
 - keep `system_prompt.md` changes reviewable and regression-tested
@@ -90,6 +94,10 @@ For the full non-hosted repo validation flow, use:
 task verify
 ```
 
+For a concise guide to what runs automatically in local hooks, PR CI, trusted
+hosted evals, and nightlies, see
+[`docs/CI.md`](./CI.md).
+
 Hosted evals require:
 
 - `OPENAI_API_KEY`
@@ -97,9 +105,22 @@ Hosted evals require:
 Validation and fast local tests do not.
 
 In GitHub Actions, the hosted key is stored only as the `OPENAI_API_KEY`
-environment secret in `openai-ci`. Secret-backed evals run only on trusted
-protected-branch events and never on `pull_request`, so PR code does not run
-with the OpenAI credential.
+environment secret in `openai-ci`.
+
+Hosted eval access is split by trust level:
+
+- `pull_request` hosted evals run only for same-repo PRs
+- same-repo PRs get `Eval Smoke` as the required hosted pre-merge signal
+- same-repo PRs may also run advisory `Eval Targeted`
+- fork PRs still get only non-secret validation
+- same-repo write access is treated as trusted in this repo's threat model
+- `push` to `main`, scheduled runs, and manual dispatches on `main` continue to
+  use the hosted key
+
+Because `pull_request` runs use refs like `refs/pull/<n>/merge`, the
+`openai-ci` environment uses selected branch and tag policies instead of
+protected-branches-only. The selected policies allow `main` and
+`refs/pull/*/merge`.
 
 Prompt-eval path rules for CI live in
 [`.github/prompt-eval-paths.yml`](../.github/prompt-eval-paths.yml).
@@ -267,7 +288,8 @@ just skips the expensive nightly eval jobs after a lightweight preflight when
 the latest `main` commit matches the last completed nightly run. Trusted repo
 operators can bypass that scheduled skip by manually dispatching the workflow on
 `main` with `run_nightly_full=true`, which is intended for QA and emergency
-validation. If you want a browser UI, use `task eval:view` or `promptfoo view`
+validation. Nightly runs act as the drift-detection backstop for the broadest
+available coverage, including the full hosted eval suite. If you want a browser UI, use `task eval:view` or `promptfoo view`
 against the desired Promptfoo state directory rather than expecting per-run
 HTML files.
 
