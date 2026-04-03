@@ -153,6 +153,103 @@ function formatCompareCounts(compareCounts) {
   return `candidate=${compareCounts.candidate} baseline=${compareCounts.baseline} tie=${compareCounts.tie} unknown=${compareCounts.unknown}`;
 }
 
+function formatDisplayPath(filePath) {
+  const relativePath = path.relative(process.cwd(), filePath);
+  if (relativePath && !relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+    return relativePath;
+  }
+  return filePath;
+}
+
+function truncateReason(reason, maxLength = 200) {
+  const normalized = String(reason || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return '';
+  }
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, maxLength - 3)}...`;
+}
+
+function formatTotalsLine(totals) {
+  return `tests=${totals.tests} passed=${totals.passed} flaky_passed=${totals.flakyPassed} recovered_errors=${totals.recoveredErrors} failed=${totals.failed} errors=${totals.errors}`;
+}
+
+function getAttentionTests(runReport) {
+  return runReport.tests.filter((test) => test.status === 'error' || test.status === 'failed');
+}
+
+function formatAttentionEntry(test) {
+  const parts = [
+    `${test.status.toUpperCase()} ${test.suite}/${test.id}`,
+    `[${test.phase}]`,
+  ];
+  if (test.compareDecision) {
+    parts.push(`decision=${test.compareDecision}`);
+  }
+  if (test.compareCounts) {
+    parts.push(formatCompareCounts(test.compareCounts));
+  }
+  if (test.gateStatus) {
+    parts.push(`gate=${test.gateStatus}`);
+  }
+  if (test.reason) {
+    parts.push(`reason=${truncateReason(test.reason)}`);
+  }
+  return parts.join(' ');
+}
+
+function buildHighSignalSummary(runReport, { artifactDir, summaryPath } = {}) {
+  const lines = [
+    `Prompt Eval: ${runReport.result}`,
+    `Totals: ${formatTotalsLine(runReport.totals)}`,
+  ];
+  const attentionTests = getAttentionTests(runReport);
+  if (attentionTests.length) {
+    lines.push('Needs Attention:');
+    for (const test of attentionTests) {
+      lines.push(`- ${formatAttentionEntry(test)}`);
+    }
+  } else {
+    lines.push('Needs Attention: none');
+  }
+  if (artifactDir) {
+    lines.push(`Artifact Dir: ${formatDisplayPath(artifactDir)}`);
+  }
+  if (summaryPath) {
+    lines.push(`Summary Path: ${formatDisplayPath(summaryPath)}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function buildStepSummary(runReport) {
+  const lines = [
+    '## Prompt Eval Outcome',
+    '',
+    `- Status: ${runReport.result}`,
+    `- Totals: ${formatTotalsLine(runReport.totals)}`,
+  ];
+  const attentionTests = getAttentionTests(runReport);
+  if (attentionTests.length) {
+    lines.push('', '### Needs Attention', '');
+    for (const test of attentionTests) {
+      lines.push(`- ${formatAttentionEntry(test)}`);
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+function appendGithubStepSummary(runReport, stepSummaryPath = process.env.GITHUB_STEP_SUMMARY) {
+  if (!stepSummaryPath) {
+    return false;
+  }
+  const content = buildStepSummary(runReport);
+  const prefix = fs.existsSync(stepSummaryPath) && fs.statSync(stepSummaryPath).size > 0 ? '\n' : '';
+  fs.appendFileSync(stepSummaryPath, `${prefix}${content}`, 'utf8');
+  return true;
+}
+
 function summarizeGroupedRows(rows, phaseMode, phaseName) {
   const sortedRows = [...rows].sort((left, right) => (left.promptIdx || 0) - (right.promptIdx || 0));
   const candidateRow = sortedRows.find((row) => row.promptIdx === 0) || sortedRows[0];
@@ -374,9 +471,10 @@ function buildCombinedReport({ artifactDir, phaseReports }) {
 
 function buildMarkdownSummary(runReport) {
   const lines = [
-    '## Prompt Eval Summary',
+    '## Prompt Eval Outcome',
     '',
-    `- Result: ${runReport.result}`,
+    `- Status: ${runReport.result}`,
+    `- Totals: ${formatTotalsLine(runReport.totals)}`,
     `- Tests: ${runReport.totals.tests}`,
     `- Passed: ${runReport.totals.passed}`,
     `- Flaky Passed: ${runReport.totals.flakyPassed}`,
@@ -384,6 +482,14 @@ function buildMarkdownSummary(runReport) {
     `- Failed: ${runReport.totals.failed}`,
     `- Errors: ${runReport.totals.errors}`,
   ];
+
+  const attentionTests = getAttentionTests(runReport);
+  if (attentionTests.length) {
+    lines.push('', '### Needs Attention', '');
+    for (const test of attentionTests) {
+      lines.push(`- ${formatAttentionEntry(test)}`);
+    }
+  }
 
   if (runReport.phases.length) {
     lines.push('', '### Promptfoo Reports', '');
@@ -513,8 +619,11 @@ function parseArgs(argv) {
 function main(argv = process.argv.slice(2)) {
   const args = parseArgs(argv);
   const { runReport, summaryPath } = writeSummary(args);
-  console.log(`summary_path=${summaryPath}`);
-  console.log(`result=${runReport.result}`);
+  process.stdout.write(buildHighSignalSummary(runReport, {
+    artifactDir: args.artifactDir,
+    summaryPath,
+  }));
+  appendGithubStepSummary(runReport);
   if (args.check && runReport.result !== 'PASS') {
     process.exit(1);
   }
@@ -527,7 +636,10 @@ if (require.main === module) {
 module.exports = {
   aggregateLogicalTests,
   buildCombinedReport,
+  buildHighSignalSummary,
   buildMarkdownSummary,
+  buildStepSummary,
+  appendGithubStepSummary,
   formatDuration,
   getPromptfooRows,
   inferReliableCompareDecision,

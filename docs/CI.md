@@ -48,6 +48,8 @@ Same-repo PRs:
 
 - `Eval Smoke` runs as the required hosted prompt gate
 - `Eval Targeted` may run as advisory hosted coverage
+- prompt-eval jobs surface the final outcome and failing case ids directly in
+  the eval step output and GitHub step summary
 
 Fork or docs-only PRs:
 
@@ -75,6 +77,7 @@ It is intended to run the broadest available validation stack, including:
 - full prompt fast checks
 - full hosted Promptfoo eval coverage
 - longer-running and more expensive checks that are not appropriate for every PR
+- the same high-signal prompt-eval outcome summary used in PR jobs
 
 The current workflow skips a scheduled nightly when `main` has no new commit
 since the last completed nightly. Trusted operators can still force the full

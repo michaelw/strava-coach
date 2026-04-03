@@ -307,3 +307,38 @@ test('helper honors output-dir, output-prefix, and skip-summary flags', () => {
   assert.equal(invocations[0][invocations[0].indexOf('-o') + 1], path.join(outputDir, 'compare.personalization.json'));
   assert.doesNotMatch(result.stdout, /summary_path=/);
 });
+
+test('helper prints a high-signal summary block before failing on non-pass results', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'strava-coach-phase-summary-'));
+  const outputDir = path.join(tempDir, 'artifacts');
+  const { promptfooPath, argsDir, countFile } = createFakePromptfoo(tempDir, 'always-error');
+
+  const result = spawnSync('sh', [
+    SCRIPT_PATH,
+    '--output-dir',
+    outputDir,
+    'evals/promptfoo/promptfooconfig.self.yaml',
+  ], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      FAKE_PROMPTFOO_ARGS_DIR: argsDir,
+      FAKE_PROMPTFOO_COUNT_FILE: countFile,
+      FAKE_PROMPTFOO_BEHAVIOR: 'always-error',
+      FAKE_PROMPTFOO_REPORT_PASS: createPromptfooReport({ success: true }),
+      FAKE_PROMPTFOO_REPORT_ERROR: createPromptfooReport({ success: false, error: 'API error: 429 Too Many Requests' }),
+      FAKE_PROMPTFOO_REPORT_FLAKY_FAIL: createPromptfooReport({ success: false, reason: 'LLM rubric failed', tags: ['sample', 'flaky'] }),
+      PROMPTFOO_BIN: promptfooPath,
+      PROMPT_EVAL_RETRY_ERRORS_PASSES: '0',
+      PROMPT_EVAL_RETRY_FLAKY_PASSES: '0',
+    },
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /^Prompt Eval: ERROR/m);
+  assert.match(result.stdout, /Needs Attention:/);
+  assert.match(result.stdout, /ERROR smoke\/sample-001 \[self\] reason=API error: 429 Too Many Requests/);
+  assert.match(result.stdout, new RegExp(`Artifact Dir: ${outputDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  assert.match(result.stdout, new RegExp(`Summary Path: ${path.join(outputDir, 'summary.md').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+});
