@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: "0 9 * * *"
   workflow_dispatch:
+    inputs:
+      run_nightly_full:
+        description: "Run the Nightly Full hosted eval on main"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -91,8 +97,12 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PROMPT_EVAL_CHANGED: ${{ needs.detect-prompt-eval-changes.outputs.prompt_eval_changed }}
           NIGHTLY_HAS_NEW_COMMIT: ${{ needs.detect-nightly-work.outputs.nightly_has_new_commit }}
+          RUN_NIGHTLY_FULL: ${{ inputs.run_nightly_full }}
         run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$RUN_NIGHTLY_FULL" = "true" ]; then
+            ACTIVE="true"
+            REASON="manual nightly dispatch"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             ACTIVE="true"
             REASON="manual dispatch"
           elif [ "$EVENT_NAME" = "schedule" ]; then
@@ -309,7 +319,9 @@ jobs:
     env:
       PROMPT_EVAL_OUTPUT_DIR: ${{ runner.temp }}/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-full
       PROMPTFOO_CONFIG_DIR: ${{ runner.temp }}/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-full
-    if: github.event_name == 'schedule' && needs.detect-nightly-work.outputs.nightly_has_new_commit == 'true'
+    if: |
+      (github.event_name == 'schedule' && needs.detect-nightly-work.outputs.nightly_has_new_commit == 'true') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.run_nightly_full)
 
     steps:
       - name: Checkout

@@ -255,6 +255,7 @@ CI keeps the same high-level entrypoints:
 - run smoke hosted evals on trusted `main` pushes and manual dispatches from `main`
 - run targeted hosted evals on trusted `main` pushes
 - run the full suite on the nightly schedule when `main` has a new commit since the last completed nightly
+- allow trusted operators to trigger the nightly full run manually on `main` for QA or emergency use
 
 The repo routes validation through Taskfile targets, uploads the native
 Promptfoo artifact directory, and uses the `openai-ci` GitHub Actions
@@ -263,8 +264,10 @@ It stays present on every PR, but exits quickly when no prompt-eval inputs
 changed so doc-only or other immaterial edits do not pay the full setup/test
 cost. GitHub still creates the scheduled workflow run every day; the workflow
 just skips the expensive nightly eval jobs after a lightweight preflight when
-the latest `main` commit matches the last completed nightly run. If you want a
-browser UI, use `task eval:view` or `promptfoo view`
+the latest `main` commit matches the last completed nightly run. Trusted repo
+operators can bypass that scheduled skip by manually dispatching the workflow on
+`main` with `run_nightly_full=true`, which is intended for QA and emergency
+validation. If you want a browser UI, use `task eval:view` or `promptfoo view`
 against the desired Promptfoo state directory rather than expecting per-run
 HTML files.
 
