@@ -141,6 +141,11 @@ Use the Taskfile as the stable entrypoint for local validation:
 - `task site:build` validates the production Hugo build
 - `task verify` runs the full non-hosted validation suite
 
+Local Task runs suppress Task's own command echo by default so the underlying
+tool output is easier to read. To turn Task command tracing back on while
+debugging, prefix a command with `TASK_SILENT=0`, for example
+`TASK_SILENT=0 task check`.
+
 A concise “what runs when” guide for developers and QA lives in
 [`docs/CI.md`](./docs/CI.md).
 Use `task` as the canonical interface for repo operations; raw scripts and

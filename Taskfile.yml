@@ -8,7 +8,6 @@ tasks:
   default:
     aliases: [list, ls, help]
     desc: List available tasks
-    silent: true
     cmds:
       - task --list
 
