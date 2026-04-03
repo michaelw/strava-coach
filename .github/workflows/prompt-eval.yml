@@ -30,13 +30,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 0
 
       - name: Detect relevant changes
         id: filter
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
         with:
           filters: .github/prompt-eval-paths.yml
           list-files: json
@@ -56,7 +56,7 @@ jobs:
       - name: Check for new commits since last nightly
         if: github.event_name == 'schedule'
         id: schedule_preflight
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             const currentSha = context.sha;
@@ -153,17 +153,17 @@ jobs:
 
       - name: Checkout
         if: steps.decide.outputs.active == 'true'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up Task
         if: steps.decide.outputs.active == 'true'
-        uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44
         with:
           version: "3.x"
 
       - name: Set up Node
         if: steps.decide.outputs.active == 'true'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "22"
           cache: "npm"
@@ -234,19 +234,19 @@ jobs:
 
       - name: Checkout
         if: steps.decide.outputs.active == 'true'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 0
 
       - name: Set up Task
         if: steps.decide.outputs.active == 'true'
-        uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44
         with:
           version: "3.x"
 
       - name: Set up Node
         if: steps.decide.outputs.active == 'true'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "22"
           cache: "npm"
@@ -278,7 +278,7 @@ jobs:
 
       - name: Upload smoke artifacts
         if: always() && steps.decide.outputs.active == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
           name: prompt-eval-smoke
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
@@ -306,17 +306,17 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 0
 
       - name: Set up Task
-        uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44
         with:
           version: "3.x"
 
       - name: Set up Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "22"
           cache: "npm"
@@ -383,7 +383,7 @@ jobs:
 
       - name: Upload targeted artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
           name: prompt-eval-targeted
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
@@ -408,15 +408,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Set up Task
-        uses: go-task/setup-task@70f2430ad412f838533de8c0515c749ffb2b8bd3
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44
         with:
           version: "3.x"
 
       - name: Set up Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: "22"
           cache: "npm"
@@ -444,7 +444,7 @@ jobs:
 
       - name: Upload nightly artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
           name: prompt-eval-full
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
