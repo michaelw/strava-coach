@@ -54,6 +54,7 @@ Same-repo PRs:
 - `Eval Targeted` may run as advisory hosted coverage
 - prompt-eval jobs surface the final outcome and failing case ids directly in
   the eval step output and GitHub step summary
+- Renovate app PRs, including baseline pin bumps, follow this same path
 
 Fork or docs-only PRs:
 
@@ -71,6 +72,21 @@ Prompt-related pushes also run:
 - `Prompt Eval Gate`
 - `Eval Smoke`
 - `Eval Targeted`
+
+### Baseline Release Promotion
+
+Publishing `prompt-baseline-v<semver>` does not change the compare baseline pin
+directly. Instead:
+
+- `baseline-prompt-release.yml` publishes the immutable release artifact
+- Renovate detects that release and opens a PR updating
+  [`evals/config.yaml`](../evals/config.yaml)
+- the generated PR reuses the normal PR validation flow before the new baseline
+  becomes the default compare target
+
+This repository is intended to use the hosted Renovate GitHub App with
+[`renovate.json5`](../renovate.json5), not a self-hosted Renovate Actions
+workflow.
 
 ### Nightly And Manual Hosted Runs
 

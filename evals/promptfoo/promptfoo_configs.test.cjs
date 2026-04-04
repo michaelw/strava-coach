@@ -10,6 +10,7 @@ const {
   readRetryPolicy,
   readYaml,
 } = require('./config.cjs');
+const { deriveVersionFromUrl } = require('../prompts/baseline.cjs');
 
 const SELF_CONFIG_PATH = path.resolve('evals/promptfoo/promptfooconfig.self.yaml');
 const COMPARE_CONFIG_PATH = path.resolve('evals/promptfoo/promptfooconfig.compare.yaml');
@@ -70,11 +71,11 @@ test('repo config exposes retry defaults for hosted eval reruns', () => {
 test('repo config exposes the pinned baseline artifact source', () => {
   const repoConfig = readRepoConfig();
   const baselineConfig = readBaselineConfig();
+  const expectedUrl = `https://github.com/michaelw/strava-coach/releases/download/prompt-baseline-v${repoConfig.baseline.version}/strava-coach-system-prompt.md`;
 
-  assert.deepEqual(repoConfig.baseline, {
-    version: '1.0.0',
-    url: 'https://github.com/michaelw/strava-coach/releases/download/prompt-baseline-v1.0.0/strava-coach-system-prompt.md',
-  });
+  assert.match(repoConfig.baseline.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(repoConfig.baseline.url, expectedUrl);
+  assert.equal(deriveVersionFromUrl(repoConfig.baseline.url), repoConfig.baseline.version);
   assert.deepEqual(baselineConfig, repoConfig.baseline);
   assert.deepEqual(DEFAULT_BASELINE_CONFIG, {
     version: '',

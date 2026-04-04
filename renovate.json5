@@ -1,0 +1,41 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended'],
+  dependencyDashboard: false,
+  enabledManagers: ['npm', 'github-actions', 'pre-commit', 'custom.regex'],
+  customManagers: [
+    {
+      customType: 'regex',
+      description: 'Update the pinned compare baseline release in evals/config.yaml',
+      managerFilePatterns: ['/^evals\\/config\\.yaml$/'],
+      matchStrings: [
+        'baseline:\\s*\\n(?<indentation>[ \\t]*)version:\\s(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s*\\n[ \\t]*url:\\shttps://github\\.com/michaelw/strava-coach/releases/download/prompt-baseline-v\\d+\\.\\d+\\.\\d+/strava-coach-system-prompt\\.md',
+      ],
+      autoReplaceStringTemplate:
+        'baseline:\n{{{indentation}}}version: {{{newValue}}}\n{{{indentation}}}url: https://github.com/michaelw/strava-coach/releases/download/prompt-baseline-v{{{newValue}}}/strava-coach-system-prompt.md',
+      depNameTemplate: 'michaelw/strava-coach',
+      datasourceTemplate: 'github-releases',
+      extractVersionTemplate: '^prompt-baseline-v(?<version>.*)$',
+      versioningTemplate: 'semver',
+    },
+  ],
+  packageRules: [
+    {
+      matchManagers: ['github-actions'],
+      groupName: 'github actions',
+    },
+    {
+      matchManagers: ['npm'],
+      groupName: 'npm dev dependencies',
+    },
+    {
+      matchManagers: ['pre-commit'],
+      groupName: 'pre-commit hooks',
+    },
+    {
+      matchManagers: ['custom.regex'],
+      commitMessageTopic: 'prompt baseline release',
+      groupName: 'prompt baseline release',
+    },
+  ],
+}
