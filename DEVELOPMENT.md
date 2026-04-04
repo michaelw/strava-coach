@@ -78,13 +78,13 @@ task verify
 Start the local docs preview:
 
 ```bash
-task serve
+task site:serve
 ```
 
 To change the preview port:
 
 ```bash
-HUGO_PORT=4000 task serve
+HUGO_PORT=4000 task site:serve
 ```
 
 ## What To Run For Common Changes
