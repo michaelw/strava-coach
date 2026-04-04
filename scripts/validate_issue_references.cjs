@@ -180,7 +180,7 @@ function main() {
   if (failures.length > 0) {
     throw new Error([
       'Issue reference validation failed.',
-      'Add a plain reference like "#42" unless the PR or commit fully resolves the issue and should use a closing keyword.',
+      'Add a plain reference like "#<issue-ref>" unless the PR or commit fully resolves the issue and should use a closing keyword.',
       ...failures,
     ].join('\n\n'));
   }
