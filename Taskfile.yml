@@ -171,7 +171,7 @@ tasks:
       - task: check
       - task: site:build
 
-  serve:
+  site:serve:
     desc: Start the local Hugo preview server
     deps:
       - _require_hugo
@@ -247,6 +247,6 @@ tasks:
     cmds:
       - |
         if ! command -v hugo >/dev/null 2>&1; then
-          echo "Hugo is required for task serve and task site:build. Install Hugo or use the devcontainer." >&2
+          echo "Hugo is required for task site:* targets. Install Hugo or use the devcontainer." >&2
           exit 1
         fi

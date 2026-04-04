@@ -167,7 +167,7 @@ You can preview the GitHub Pages site locally inside a devcontainer.
 3. Start the Hugo server:
 
 ```bash
-task serve
+task site:serve
 ```
 
 Optional: this repository includes a VS Code task named `Hugo Serve` in `.vscode/tasks.json` that can auto-start on folder open if automatic tasks are allowed.
@@ -177,7 +177,7 @@ Then open the forwarded site at `http://127.0.0.1:1313/`.
 The preview server defaults to Hugo's standard port `1313`. To use a different local port, set `HUGO_PORT` in your shell or in `.env`, for example:
 
 ```bash
-HUGO_PORT=4000 task serve
+HUGO_PORT=4000 task site:serve
 ```
 
 The devcontainer forwards:
