@@ -53,7 +53,33 @@ test('validateIssueReferences skips branches without explicit issue tokens', () 
   assert.deepEqual(result.branchIssues, []);
 });
 
-test('validateIssueReferences requires matching issue refs in PR context and commits', () => {
+test('validateIssueReferences fails when issue is missing from entire PR', () => {
+  const result = validateIssueReferences({
+    branchName: 'codex/implement-github-issue-26',
+    prTitle: 'Improve CI guardrails',
+    prBody: 'Adds a PR template.',
+    commits: [
+      {
+        sha: 'abc1234',
+        subject: 'ci: add issue reference validator',
+        body: '',
+        message: 'ci: add issue reference validator',
+      },
+      {
+        sha: 'def5678',
+        subject: 'docs: explain issue reference enforcement',
+        body: '',
+        message: 'docs: explain issue reference enforcement',
+      },
+    ],
+  });
+
+  assert.deepEqual(result.branchIssues, [26]);
+  assert.deepEqual(result.missingPrIssues, [26]);
+  assert.deepEqual(result.commitsMissingIssues, []);
+});
+
+test('validateIssueReferences passes when only one commit references the branch issue', () => {
   const result = validateIssueReferences({
     branchName: 'codex/implement-github-issue-26',
     prTitle: 'Improve CI guardrails',
@@ -74,12 +100,29 @@ test('validateIssueReferences requires matching issue refs in PR context and com
     ],
   });
 
-  assert.deepEqual(result.branchIssues, [26]);
-  assert.deepEqual(result.missingPrIssues, [26]);
-  assert.deepEqual(
-    result.commitsMissingIssues.map((commit) => commit.sha),
-    ['abc1234'],
-  );
+  assert.deepEqual(result.missingPrIssues, []);
+  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.equal(result.skipped, false);
+});
+
+test('validateIssueReferences passes when only the PR title/body references the branch issue', () => {
+  const result = validateIssueReferences({
+    branchName: 'codex/implement-github-issue-26',
+    prTitle: 'ci: enforce issue references in PRs and commits (#26)',
+    prBody: 'Documents the new guardrail.',
+    commits: [
+      {
+        sha: 'abc1234',
+        subject: 'ci: validate PR issue refs',
+        body: '',
+        message: 'ci: validate PR issue refs',
+      },
+    ],
+  });
+
+  assert.deepEqual(result.missingPrIssues, []);
+  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.equal(result.skipped, false);
 });
 
 test('validateIssueReferences passes when PR context and all commits reference the branch issue', () => {

@@ -108,24 +108,16 @@ function validateIssueReferences({ branchName, prTitle = '', prBody = '', commit
     };
   }
 
-  const prContext = `${prTitle}\n${prBody}`;
+  const commitMessages = commits.map((commit) => commit.message).join('\n');
+  const prContext = `${prTitle}\n${prBody}\n${commitMessages}`;
   const missingPrIssues = branchIssues.filter(
     (issueNumber) => !messageContainsIssueReference(prContext, issueNumber),
   );
 
-  const commitsMissingIssues = commits
-    .map((commit) => ({
-      ...commit,
-      missingIssues: branchIssues.filter(
-        (issueNumber) => !messageContainsIssueReference(commit.message, issueNumber),
-      ),
-    }))
-    .filter((commit) => commit.missingIssues.length > 0);
-
   return {
     branchIssues,
     missingPrIssues,
-    commitsMissingIssues,
+    commitsMissingIssues: [],
     skipped: false,
   };
 }
@@ -165,15 +157,7 @@ function main() {
 
   if (result.missingPrIssues.length > 0) {
     failures.push(
-      `PR title or body must reference ${formatIssueList(result.missingPrIssues)} because branch "${branchName}" encodes ${expectedIssues}.`,
-    );
-  }
-
-  if (result.commitsMissingIssues.length > 0) {
-    failures.push(
-      `Each non-merge commit in the PR must reference ${expectedIssues}. Missing refs:\n${result.commitsMissingIssues
-        .map((commit) => `- ${commit.sha.slice(0, 7)} ${commit.subject}`)
-        .join('\n')}`,
+      `PR (title, body, or commits) must reference ${formatIssueList(result.missingPrIssues)} because branch "${branchName}" encodes ${expectedIssues}.`,
     );
   }
 
