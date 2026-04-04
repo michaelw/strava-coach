@@ -19,7 +19,7 @@ paths:
           content:
             application/json:
               schema:
-                "": '#/components/schemas/Athlete'
+                $ref: '#/components/schemas/Athlete'
   /athlete/zones:
     get:
       operationId: getAthleteZones
@@ -88,7 +88,7 @@ paths:
               schema:
                 type: array
                 items:
-                  "": '#/components/schemas/ActivitySummary'
+                  $ref: '#/components/schemas/ActivitySummary'
   /activities/{id}:
     get:
       operationId: getActivityById
@@ -112,7 +112,7 @@ paths:
           content:
             application/json:
               schema:
-                "": '#/components/schemas/ActivityDetail'
+                $ref: '#/components/schemas/ActivityDetail'
   /activities/{id}/streams:
     get:
       operationId: getActivityStreams
@@ -140,21 +140,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties: {}
-                additionalProperties:
-                  type: object
-                  properties:
-                    original_size:
-                      type: integer
-                    resolution:
-                      type: string
-                    series_type:
-                      type: string
-                    data:
-                      type: array
-                      items:
-                        type: number
+                oneOf:
+                  - $ref: '#/components/schemas/ActivityStreams'
+                  - $ref: '#/components/schemas/StreamErrorResponse'
   /activities/{id}/zones:
     get:
       operationId: getActivityZones
@@ -218,6 +206,15 @@ components:
         start_date:
           type: string
           format: date-time
+        start_date_local:
+          type: string
+          format: date-time
+        average_speed:
+          type: number
+        average_heartrate:
+          type: number
+        average_watts:
+          type: number
         visibility:
           type: string
           enum:
@@ -248,6 +245,11 @@ components:
         start_date:
           type: string
           format: date-time
+        start_date_local:
+          type: string
+          format: date-time
+        average_speed:
+          type: number
         visibility:
           type: string
           enum:
@@ -264,6 +266,41 @@ components:
           type: number
         max_heartrate:
           type: number
+    ActivityStreams:
+      type: object
+      description: Mapping of stream type to time-series payloads keyed by stream name.
+      additionalProperties:
+        $ref: '#/components/schemas/ActivityStream'
+    ActivityStream:
+      type: object
+      properties:
+        original_size:
+          type: integer
+        resolution:
+          type: string
+        series_type:
+          type: string
+        data:
+          type: array
+          items:
+            oneOf:
+              - type: number
+              - type: array
+                minItems: 2
+                maxItems: 2
+                items:
+                  type: number
+      required:
+        - data
+      additionalProperties: true
+    StreamErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+      additionalProperties: true
   securitySchemes:
     stravaOAuth:
       type: oauth2
