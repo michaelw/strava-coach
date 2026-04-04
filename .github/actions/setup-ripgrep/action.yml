@@ -1,0 +1,51 @@
+name: Set up ripgrep
+description: >
+  Install a pinned ripgrep release binary from the upstream GitHub release
+  artifact. Uses the musl static build so no sudo/apt is required.
+
+inputs:
+  version:
+    description: ripgrep version to install
+    required: false
+    default: "15.1.0"
+
+runs:
+  using: composite
+  steps:
+    - name: Install ripgrep
+      shell: bash
+      env:
+        RG_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        RG_ARTIFACT="ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+        RG_URL="https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/${RG_ARTIFACT}"
+
+        # Pinned SHA-256 digest per version.
+        case "${RG_VERSION}" in
+          15.1.0) RG_SHA256="1c9297be4a084eea7ecaedf93eb03d058d6faae29bbc57ecdaf5063921491599" ;;
+          *) echo "::error::Unsupported ripgrep version: ${RG_VERSION}. Add its SHA-256 to setup-ripgrep/action.yml." && exit 1 ;;
+        esac
+
+        INSTALL_DIR="${HOME}/.local/bin"
+        mkdir -p "${INSTALL_DIR}"
+
+        TMP_DIR="$(mktemp -d)"
+        trap 'rm -rf "${TMP_DIR}"' EXIT
+
+        echo "Downloading ripgrep ${RG_VERSION} from ${RG_URL}"
+        curl -fsSL -o "${TMP_DIR}/${RG_ARTIFACT}" "${RG_URL}"
+
+        echo "${RG_SHA256}  ${TMP_DIR}/${RG_ARTIFACT}" | sha256sum --check --status || {
+          ACTUAL="$(sha256sum "${TMP_DIR}/${RG_ARTIFACT}" | awk '{print $1}')"
+          echo "::error::SHA-256 mismatch for ${RG_ARTIFACT} — expected ${RG_SHA256}, got ${ACTUAL}"
+          exit 1
+        }
+
+        tar -xzf "${TMP_DIR}/${RG_ARTIFACT}" -C "${TMP_DIR}"
+        cp "${TMP_DIR}/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl/rg" "${INSTALL_DIR}/rg"
+        chmod +x "${INSTALL_DIR}/rg"
+
+        echo "${INSTALL_DIR}" >> "${GITHUB_PATH}"
+        echo "Installed $("${INSTALL_DIR}/rg" --version | head -1)"
