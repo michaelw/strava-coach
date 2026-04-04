@@ -112,7 +112,9 @@ Hosted eval access is split by trust level:
 
 - `pull_request` hosted evals run only for same-repo PRs
 - same-repo PRs get `Eval Smoke` as the required hosted pre-merge signal
-- same-repo PRs may also run advisory `Eval Targeted`
+- same-repo PRs also run advisory `Eval Targeted` only for non-smoke suites
+  detected from changed `evals/cases/**` files; `smoke` is never re-run via
+  `Eval Targeted` on a PR
 - fork PRs still get only non-secret validation
 - same-repo write access is treated as trusted in this repo's threat model
 - `push` to `main`, scheduled runs, and manual dispatches on `main` continue to
@@ -368,7 +370,10 @@ CI keeps the same high-level entrypoints:
 
 - run one required prompt gate that validates cases and runs fast local tests when relevant files changed
 - run smoke hosted evals on trusted `main` pushes and manual dispatches from `main`
-- run targeted hosted evals on trusted `main` pushes
+- run targeted hosted evals on trusted `main` pushes; on same-repo PRs, run
+  targeted evals only for non-smoke suites detected from changed
+  `evals/cases/**` files (skipped entirely when only smoke-suite or no eval
+  case files changed)
 - run the full suite on the nightly schedule when `main` has a new commit since the last completed nightly
 - allow trusted operators to trigger the nightly full run manually on `main` for QA or emergency use
 

@@ -337,6 +337,7 @@ jobs:
         id: suites
         env:
           EVAL_CASE_FILES: ${{ needs.detect-prompt-eval-changes.outputs.eval_case_files }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           SUITES="$(node -e '
             const files = JSON.parse(process.env.EVAL_CASE_FILES || "[]");
@@ -349,10 +350,23 @@ jobs:
             )].sort();
             process.stdout.write(suites.join("\n"));
           ')"
-          if [ -z "$SUITES" ]; then
-            SUITES="smoke"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            # On PRs, Eval Smoke owns the smoke suite; filter it out here.
+            SUITES="$(printf '%s\n' "$SUITES" | grep -vx smoke || true)"
+            SUITES="$(printf '%s\n' "$SUITES" | awk 'NF' | xargs)"
+            if [ -z "$SUITES" ]; then
+              SKIP="true"
+            else
+              SKIP="false"
+            fi
+          else
+            SKIP="false"
+            if [ -z "$SUITES" ]; then
+              SUITES="smoke"
+            fi
           fi
           {
+            echo "skip=$SKIP"
             echo "list<<EOF"
             echo "$SUITES"
             echo "EOF"
@@ -360,15 +374,19 @@ jobs:
 
       - name: Run targeted eval
         id: targeted_eval
+        if: steps.suites.outputs.skip != 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           SUITES="$(printf '%s\n' "${{ steps.suites.outputs.list }}" | awk 'NF' | sort -u | xargs)"
           RUN_STATUS=0
-          if [ -z "$SUITES" ]; then
-            SUITES="smoke"
-          elif ! printf '%s\n' "$SUITES" | tr ' ' '\n' | grep -qx smoke; then
-            SUITES="smoke $SUITES"
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            if [ -z "$SUITES" ]; then
+              SUITES="smoke"
+            elif ! printf '%s\n' "$SUITES" | tr ' ' '\n' | grep -qx smoke; then
+              SUITES="smoke $SUITES"
+            fi
           fi
           mkdir -p "$PROMPT_EVAL_OUTPUT_DIR"
           for SUITE in $SUITES; do

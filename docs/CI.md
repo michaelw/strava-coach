@@ -51,7 +51,10 @@ Does not run:
 Same-repo PRs:
 
 - `Eval Smoke` runs as the required hosted prompt gate
-- `Eval Targeted` may run as advisory hosted coverage
+- `Eval Targeted` runs only when changed `evals/cases/**` files include
+  non-smoke suites; it never re-runs `smoke` on a PR because `Eval Smoke`
+  already owns that gate
+- PRs with no changed non-smoke eval case files skip `Eval Targeted` entirely
 - prompt-eval jobs surface the final outcome and failing case ids directly in
   the eval step output and GitHub step summary
 - Renovate app PRs, including baseline pin bumps, follow this same path
