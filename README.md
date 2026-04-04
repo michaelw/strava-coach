@@ -25,7 +25,7 @@ Useful first commands:
 
 ```bash
 task check
-task serve
+task site:serve
 ```
 
 Use `task` as the canonical human-facing interface for repo operations.
