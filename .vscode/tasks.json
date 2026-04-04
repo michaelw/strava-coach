@@ -4,7 +4,7 @@
     {
       "label": "Hugo Serve",
       "type": "shell",
-      "command": "if [ -f /.dockerenv ]; then task serve; else echo 'Skipping Hugo Serve auto-start (not running inside a devcontainer).'; fi",
+      "command": "if [ -f /.dockerenv ]; then task site:serve; else echo 'Skipping Hugo Serve auto-start (not running inside a devcontainer).'; fi",
       "isBackground": true,
       "problemMatcher": {
         "owner": "hugo",
