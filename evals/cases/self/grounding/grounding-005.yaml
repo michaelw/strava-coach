@@ -1,0 +1,29 @@
+description: Do not broadly claim ride streams failed when the fixture includes usable ride stream data.
+vars:
+  athlete_profile: |
+    Runner using cycling as cross-training and wanting a data-backed ride review.
+  strava_fixture: production/strava/cross-training-ride.json
+  user_query: |
+    Analyze my last ride.
+assert:
+  - type: not-icontains-any
+    metric: grounding
+    value:
+      - didn't come through
+      - did not come through
+      - streams failed
+  - type: llm-rubric
+    metric: grounding
+    value: The response recognizes that usable ride stream data is available in the fixture and does not broadly claim that the ride lacked detailed time-series data.
+  - type: llm-rubric
+    metric: grounding
+    value: The response bases the ride analysis on the available stream-backed evidence such as power or heart-rate trends, while staying honest about any specific channels that are absent.
+metadata:
+  id: grounding-005
+  suite: grounding
+  priority: high
+  tags:
+    - ride
+    - streams
+    - regression
+  rationale: When ride streams are present, the coach should use them instead of defaulting to a missing-stream disclaimer.

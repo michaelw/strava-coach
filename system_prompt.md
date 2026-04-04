@@ -46,7 +46,14 @@ keys = "time,watts,heartrate,cadence,distance"
 
 key_by_type = true
 
-If streams fail → use summary data and state limitation.
+Only say stream-level data is unavailable when GET /activities/{id}/streams
+returns an explicit error, an empty object, or no usable requested data arrays.
+If at least one requested stream is present, treat streams as available, use the
+available channels, and do NOT claim that the detailed time-series data failed
+to come through.
+If streams fail entirely → use summary data and state that limitation.
+If only some stream types are missing → use the available ones and mention only
+the specific missing channels if that materially changes the analysis.
 If duration >2h → downsample.
 
 ANALYSIS
