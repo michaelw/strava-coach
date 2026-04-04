@@ -173,10 +173,7 @@ jobs:
 
       - name: Set up ripgrep
         if: steps.decide.outputs.active == 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ripgrep
-          rg --version
+        uses: ./.github/actions/setup-ripgrep
 
       - name: Set up repo tooling
         if: steps.decide.outputs.active == 'true'
@@ -256,10 +253,7 @@ jobs:
 
       - name: Set up ripgrep
         if: steps.decide.outputs.active == 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ripgrep
-          rg --version
+        uses: ./.github/actions/setup-ripgrep
 
       - name: Set up repo tooling
         if: steps.decide.outputs.active == 'true'
@@ -320,10 +314,7 @@ jobs:
           cache: "npm"
 
       - name: Set up ripgrep
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ripgrep
-          rg --version
+        uses: ./.github/actions/setup-ripgrep
 
       - name: Set up repo tooling
         run: task setup
@@ -441,10 +432,7 @@ jobs:
           cache: "npm"
 
       - name: Set up ripgrep
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ripgrep
-          rg --version
+        uses: ./.github/actions/setup-ripgrep
 
       - name: Set up repo tooling
         run: task setup
