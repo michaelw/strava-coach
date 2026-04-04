@@ -21,6 +21,9 @@ If you are working on your local host instead, install the documented prerequisi
 task setup
 ```
 
+That setup flow installs dependencies from the committed lockfile so a clean
+checkout does not pick up incidental `package-lock.json` churn.
+
 Useful first commands:
 
 ```bash
