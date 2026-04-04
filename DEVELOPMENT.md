@@ -231,8 +231,8 @@ Useful references:
 - If a PR addresses a GitHub issue, include the issue reference in the relevant
   commit message too, for example `#42` or `Fixes #42`.
 - If the PR branch name explicitly carries an issue token such as
-  `implement-github-issue-42`, CI will require the PR title or body and every
-  non-merge commit in that PR to reference `#42`.
+  `implement-github-issue-42`, CI will require the issue to be referenced
+  somewhere in the PR — in the title, body, or at least one commit message.
 - Reserve closing keywords like `Fixes #42` for commits and PRs that will fully
   resolve the issue when merged. Use a non-closing reference when the work is
   partial.
