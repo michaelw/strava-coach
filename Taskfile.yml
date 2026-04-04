@@ -26,9 +26,10 @@ tasks:
           echo "Install Hugo locally or use the devcontainer for docs work." >&2
         fi
       - |
-        if [ "${CI:-}" = "true" ]; then
+        if [ -f package-lock.json ]; then
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
         else
+          echo "package-lock.json is missing; falling back to npm install for this nonstandard setup." >&2
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install
         fi
       - |

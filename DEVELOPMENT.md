@@ -32,8 +32,11 @@ task setup
 
 - verifies `rg`
 - warns if Hugo is missing
-- installs Node dependencies
+- installs Node dependencies from the committed `package-lock.json` with `npm ci`
 - installs the local `pre-commit` hook when possible
+
+If you are intentionally changing dependencies, use `npm install` directly and
+review the resulting `package-lock.json` diff before committing it.
 
 ## Daily Commands
 
