@@ -298,10 +298,17 @@ Successful baseline releases are published through
 Normal semver tags like `prompt-baseline-v1.1.0` publish `system_prompt.md` as
 the asset `strava-coach-system-prompt.md`.
 
-When a candidate prompt becomes the new published baseline, publish a new
-semver baseline release and then update the pinned `baseline.url` and
-`baseline.version` in [`evals/config.yaml`](../evals/config.yaml) to that
-release.
+After a new semver baseline release is published, Renovate uses
+[`renovate.json5`](../renovate.json5) to detect that release and
+open a PR which updates both `baseline.version` and `baseline.url` in
+[`evals/config.yaml`](../evals/config.yaml) to the new immutable release
+artifact. That PR then goes through the normal repo validation flow like any
+other prompt-eval change.
+
+This repository expects the hosted Renovate GitHub App rather than a
+self-hosted Renovate workflow. Once the app is installed for the repo, the same
+config also covers the repo's other versioned artifacts such as npm
+dependencies, GitHub Actions references, and pre-commit hooks.
 
 For targeted QA or local experiments, you can override the default source
 without editing tracked files:
@@ -321,15 +328,16 @@ Current pinned baseline:
 1. `prompt-baseline-v1.0.0` already exists as the initial release-backed
    baseline artifact.
 2. [`evals/config.yaml`](../evals/config.yaml) stays pinned to that release URL
-   until a newer baseline release is intentionally promoted.
+   until a newer baseline release is intentionally promoted by the Renovate PR.
 
 Future releases:
 
 1. Publish a new `prompt-baseline-v<semver>` release from `system_prompt.md`.
-2. Update the pinned `baseline.url` and `baseline.version` in
-   [`evals/config.yaml`](../evals/config.yaml).
-3. Run `task check` or `task verify` before handoff so the new URL resolves in
-   the same way CI will use it.
+2. Let Renovate open the PR that updates
+   [`evals/config.yaml`](../evals/config.yaml) to that release.
+3. Review the generated PR and let the existing CI validate the updated pin.
+4. If Renovate has not opened the PR yet, check that the Renovate GitHub App is
+   installed for this repository and that it has processed the new release.
 
 CI may produce additional per-suite files such as `self.smoke.json` or
 `compare.personalization.json` when it loops changed suites on trusted `main`
