@@ -170,9 +170,7 @@ gh workflow run prompt-eval.yml --ref main -f run_nightly_full=true
 Usually nothing beyond local `pre-commit`.
 
 If the branch name includes an issue token such as `issue-42`, make sure the PR
-title, PR body, or commit messages reference that issue. Use `Fixes #42` only
-when the PR truly resolves the issue on merge, and prefer putting that closing
-intent in the PR body so the PR creator makes that call explicitly.
+title, PR body, or commit messages reference that issue.
 
 If you touched layouts, Hugo config, or rendering behavior, also run:
 
@@ -267,9 +265,6 @@ When a PR branch name explicitly carries an issue number, for example
 - the PR title, PR body, or commit messages in that PR to reference `#26`
 
 The guardrail accepts either a plain issue reference such as `#26` or a full
-issue URL. Prefer a plain reference unless the PR or commit should actually
-close the issue on merge.
-
-If the PR really should close the issue, the PR creator should add a closing
-keyword such as `Fixes #26` in the PR body. That choice is intentionally manual
-so branch naming and commit tooling do not accidentally close issues.
+issue URL. Prefer a plain reference by default. If the merged change fully
+resolves the issue, make that call explicitly and use a closing keyword such as
+`Fixes #26` in the PR body and/or a relevant commit message.

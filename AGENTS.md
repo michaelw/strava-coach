@@ -81,8 +81,9 @@ runtime code.
   messages reference that issue.
 - Use a plain reference like `#42` by default when the work is part of the
   issue but does not fully resolve it.
-- Let the PR creator decide whether to add a closing keyword such as
-  `Fixes #42` in the PR body when the PR fully resolves the issue.
+- Make an explicit call about whether the merged change fully resolves the
+  issue. When it does, the agent may add a closing keyword such as `Fixes #42`
+  in the PR body and/or a relevant commit message.
 - Only use closing keywords when the merged change fully resolves the issue. If
   the issue is only partially addressed, reference it without auto-closing it.
 - Keep docs synchronized with workflow changes. If CI behavior or eval policy
