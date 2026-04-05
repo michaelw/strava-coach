@@ -9,6 +9,18 @@ const DEFAULT_RETRY_POLICY = Object.freeze({
   flaky_passes: 1,
   flaky_tag: 'flaky',
 });
+const DEFAULT_RUNTIME_CONFIG = Object.freeze({
+  request_timeout_seconds: 90,
+  max_output_tokens: 1200,
+  reasoning_effort: 'minimal',
+  text_verbosity: 'low',
+  temperature: 0,
+});
+const DEFAULT_CANARY_CONFIG = Object.freeze({
+  repeat: 5,
+  allowed_failures: 1,
+  temperature: 1,
+});
 const DEFAULT_BASELINE_CONFIG = Object.freeze({
   version: '',
   url: '',
@@ -54,6 +66,62 @@ function normalizeString(value, fallback) {
 
   const trimmed = value.trim();
   return trimmed || fallback;
+}
+
+function normalizeNumber(value, fallback) {
+  const parsed = Number.parseFloat(String(value));
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function readRuntimeConfig(configPath = DEFAULT_REPO_CONFIG_PATH) {
+  const repoConfig = readRepoConfig(configPath);
+  const configured = repoConfig?.runtime || {};
+
+  return {
+    request_timeout_seconds: normalizeRetryNumber(
+      configured.request_timeout_seconds,
+      DEFAULT_RUNTIME_CONFIG.request_timeout_seconds,
+    ),
+    max_output_tokens: normalizeRetryNumber(
+      configured.max_output_tokens,
+      DEFAULT_RUNTIME_CONFIG.max_output_tokens,
+    ),
+    reasoning_effort: normalizeString(
+      configured.reasoning_effort,
+      DEFAULT_RUNTIME_CONFIG.reasoning_effort,
+    ),
+    text_verbosity: normalizeString(
+      configured.text_verbosity,
+      DEFAULT_RUNTIME_CONFIG.text_verbosity,
+    ),
+    temperature: normalizeNumber(
+      configured.temperature,
+      DEFAULT_RUNTIME_CONFIG.temperature,
+    ),
+  };
+}
+
+function readCanaryConfig(configPath = DEFAULT_REPO_CONFIG_PATH) {
+  const repoConfig = readRepoConfig(configPath);
+  const configured = repoConfig?.canary || {};
+
+  return {
+    repeat: normalizeRetryNumber(
+      configured.repeat,
+      DEFAULT_CANARY_CONFIG.repeat,
+    ),
+    allowed_failures: normalizeRetryNumber(
+      configured.allowed_failures,
+      DEFAULT_CANARY_CONFIG.allowed_failures,
+    ),
+    temperature: normalizeNumber(
+      configured.temperature,
+      DEFAULT_CANARY_CONFIG.temperature,
+    ),
+  };
 }
 
 function readRetryPolicy(configPath = DEFAULT_REPO_CONFIG_PATH) {
@@ -194,14 +262,18 @@ function writeExpandedCompareConfig(configPath, outputPath) {
 
 module.exports = {
   DEFAULT_BASELINE_CONFIG,
+  DEFAULT_CANARY_CONFIG,
   DEFAULT_REPO_CONFIG_PATH,
   DEFAULT_RETRY_POLICY,
+  DEFAULT_RUNTIME_CONFIG,
   expandCompareConfig,
   expandPromptfooTestEntry,
   parsePromptfooFileRef,
   readBaselineConfig,
+  readCanaryConfig,
   readRepoConfig,
   readRetryPolicy,
+  readRuntimeConfig,
   readYaml,
   toPromptfooFileRef,
   writeExpandedCompareConfig,

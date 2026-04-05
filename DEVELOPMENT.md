@@ -151,10 +151,16 @@ Validate case files:
 task eval:validate
 ```
 
-Run the hosted smoke suite:
+Run the deterministic hosted smoke contract suite:
 
 ```bash
 task eval:smoke
+```
+
+Run the stochastic smoke canary lane:
+
+```bash
+task eval:smoke:canary
 ```
 
 Run targeted self-grading evals:
@@ -243,7 +249,7 @@ The repo uses layered validation:
 
 1. local `pre-commit` for fast changed-file feedback
 2. PR CI for authoritative non-hosted validation
-3. trusted hosted Promptfoo runs for prompt behavior
+3. trusted hosted Promptfoo contract and canary runs for prompt behavior
 4. scheduled/manual hosted runs for broader coverage
 
 Useful references:

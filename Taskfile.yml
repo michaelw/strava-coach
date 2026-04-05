@@ -131,11 +131,32 @@ tasks:
       - node evals/prompts/resolve_baseline_prompt.cjs {{.CLI_ARGS}}
 
   eval:smoke:
-    desc: Run the smoke Promptfoo suite
+    desc: Run the deterministic smoke contract Promptfoo suite
     deps:
       - _require_openai_api_key
     cmds:
       - sh evals/promptfoo/run_promptfoo_phase.sh evals/promptfoo/promptfooconfig.self.yaml --filter-metadata suite=smoke {{.CLI_ARGS}}
+
+  eval:smoke:canary:
+    desc: Run the stochastic smoke canary Promptfoo suite
+    deps:
+      - _require_openai_api_key
+    cmds:
+      - |
+        OUTPUT_DIR="${PROMPT_EVAL_OUTPUT_DIR:-evals/reports/$(date -u +%Y%m%dT%H%M%SZ)-smoke-canary}"
+        REPO_CONFIG_PATH="${PROMPT_EVAL_REPO_CONFIG_PATH:-evals/config.yaml}"
+        DEFAULT_CANARY_REPEAT="$(node -e "const { readCanaryConfig } = require('./evals/promptfoo/config.cjs'); process.stdout.write(String(readCanaryConfig(process.argv[1]).repeat));" "$REPO_CONFIG_PATH")"
+        CANARY_REPEAT="${PROMPT_EVAL_CANARY_REPEAT:-$DEFAULT_CANARY_REPEAT}"
+        sh evals/promptfoo/run_promptfoo_phase.sh \
+          --output-dir "$OUTPUT_DIR" \
+          --output-prefix "smoke.canary" \
+          --retry-errors-passes 0 \
+          --retry-flaky-passes 0 \
+          --skip-summary \
+          evals/promptfoo/promptfooconfig.smoke.canary.yaml \
+          --repeat "$CANARY_REPEAT" \
+          {{.CLI_ARGS}}
+        node evals/promptfoo/canary_summary.cjs --artifact-dir "$OUTPUT_DIR" --repo-config "$REPO_CONFIG_PATH" --check
 
   eval:full:
     desc: Run the full Promptfoo suite

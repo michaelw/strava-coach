@@ -7,6 +7,7 @@ providers:
     config:
       max_output_tokens: 1200
       reasoning_effort: minimal
+      temperature: 0
       passthrough:
         reasoning:
           effort: minimal

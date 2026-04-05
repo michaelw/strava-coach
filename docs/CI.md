@@ -51,9 +51,11 @@ Does not run:
 
 Same-repo PRs:
 
-- `Eval Smoke` runs as the required hosted prompt gate
+- `Eval Smoke Contract` runs as the required hosted prompt gate
+- `Eval Smoke Canary` runs the same risky smoke cases with repeated stochastic
+  sampling and is advisory on PRs
 - `Eval Targeted` runs only when changed `evals/cases/**` files include
-  non-smoke suites; it never re-runs `smoke` on a PR because `Eval Smoke`
+  non-smoke suites; it never re-runs `smoke` on a PR because `Eval Smoke Contract`
   already owns that gate
 - PRs with no changed non-smoke eval case files skip `Eval Targeted` entirely
 - prompt-eval jobs surface the final outcome and failing case ids directly in
@@ -74,7 +76,8 @@ Fork or docs-only PRs:
 Prompt-related pushes also run:
 
 - `Prompt Eval Gate`
-- `Eval Smoke`
+- `Eval Smoke Contract`
+- `Eval Smoke Canary`
 - `Eval Targeted`
 
 ### Baseline Release Promotion
@@ -100,6 +103,7 @@ It is intended to run the broadest available validation stack, including:
 
 - full prompt fast checks
 - full hosted Promptfoo eval coverage
+- repeated stochastic smoke canaries with a stronger post-merge signal than PRs
 - longer-running and more expensive checks that are not appropriate for every PR
 - the same high-signal prompt-eval outcome summary used in PR jobs
 
@@ -163,10 +167,16 @@ This gives you:
 
 ### QA or manual hosted verification
 
-Smoke hosted eval on `main`:
+Smoke contract hosted eval on `main`:
 
 ```bash
 gh workflow run prompt-eval.yml --ref main
+```
+
+Smoke canary hosted eval locally with your current workspace prompt:
+
+```bash
+task eval:smoke:canary
 ```
 
 Full nightly hosted path on `main`:
@@ -187,6 +197,10 @@ That is intentional:
 The nightly run exists for a different reason: it guards against drift from
 unchanged files, external model behavior, and expensive coverage that does not
 belong on every PR.
+
+The smoke canary exists for a different reason than the smoke contract gate:
+it samples realistic stochastic behavior repeatedly and reports failure rate,
+while the contract gate stays deterministic and blocks on hard requirements.
 
 If you run `pre-commit run -a`, two prompt-validation hooks may both appear:
 
