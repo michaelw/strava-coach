@@ -23,7 +23,7 @@
       description:
         'Update pinned tool versions annotated with renovate comments. ' +
         'Add a "# renovate: datasource=... depName=... extractVersion=..." comment ' +
-        'above any TOOLNAME_VERSION variable to have it tracked here.',
+        'above any UPPERCASE_TOOL_VERSION variable to have it tracked here.',
       managerFilePatterns: [
         '/^scripts\\/devcontainer-post-create\\.sh$/',
         '/^\\.github\\/workflows\\/ci\\.yml$/',
