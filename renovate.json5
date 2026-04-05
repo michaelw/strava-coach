@@ -25,7 +25,7 @@
         '/^scripts\\/devcontainer-post-create\\.sh$/',
         '/^\\.github\\/workflows\\/ci\\.yml$/',
       ],
-      matchStrings: ['HUGO_VERSION[=: ]+"?(?<currentValue>[\\d.]+)"?'],
+      matchStrings: ['HUGO_VERSION(?:=|: )"?(?<currentValue>[\\d.]+)"?'],
       depNameTemplate: 'gohugoio/hugo',
       datasourceTemplate: 'github-releases',
       extractVersionTemplate: '^v(?<version>.*)$',
