@@ -79,6 +79,34 @@ Prompt-related pushes also run:
 - `Eval Smoke Canary`
 - `Eval Targeted`
 
+## Case Coverage By Gate
+
+The table below summarizes which eval cases each automatic gate actually runs.
+This is intentionally case-centric so contributors do not need to mentally
+expand Task aliases and workflow routing from memory.
+
+| Gate | What cases run |
+| --- | --- |
+| `pre-commit` changed cases | Only the staged `evals/cases/**/*.yaml` files passed to `task eval:validate --`. This validates schema, metadata, and fixture references for those files, but does not run hosted Promptfoo evals. |
+| `pre-commit` full tree | All case YAML files under `evals/cases/` when validator, schema, or fixture plumbing changes trigger the backstop hook. This is validation only, not hosted eval execution. |
+| `Lint And Validate` | No hosted eval cases. Runs `pre-commit` plus the Hugo site build. |
+| `Prompt Eval Gate` | No hosted Promptfoo eval cases. Runs `task check`, which validates the full case tree and runs the fast local Node test suite. |
+| `Smoke Contract` | The full self-grading `smoke` suite: `smoke-001` through `smoke-005`, once each. |
+| `Smoke Canary` | The same `smoke` suite, repeated with stochastic sampling. With the current default `canary.repeat=5`, each smoke case is sampled 5 times. |
+| `Targeted (same-repo PR)` | The full non-`smoke` suite or suites inferred from changed `evals/cases/**` paths. For example, if only `evals/cases/self/grounding/grounding-001.yaml` changes, this job still runs `grounding-001` through `grounding-005`. If the detected suite also has `evals/cases/compare/<suite>/`, the matching compare cases run too. Current compare coverage exists only for `personalization`, where `personalization-001` runs 5 times and `personalization-003` runs 3 times because compare cases expand by their top-level `repeat`. |
+| `Targeted` on `main` | The same suite-detection logic as PRs, but `smoke` is always included. If prompt-related files changed but no case files changed, this job falls back to running only the `smoke` suite. |
+| `Nightly Full` | All self suites plus all compare suites. Today that means `format`, `grounding`, `personalization`, `safety`, and `smoke`, plus compare `personalization`. |
+
+Notes:
+
+- `Eval Targeted` deduplicates suite names before running them, so changing two
+  files in `evals/cases/self/grounding/` still produces one `grounding` suite
+  run rather than two separate runs.
+- Compare cases may execute more than once in a single run because the compare
+  config expands each case by its top-level `repeat`.
+- Standard hosted lanes may also rerun failing cases when retry policy is
+  triggered by infrastructure errors or flaky-tagged assertion failures.
+
 ### Baseline Release Promotion
 
 Publishing `prompt-baseline-v<semver>` does not change the compare baseline pin
