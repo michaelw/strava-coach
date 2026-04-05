@@ -50,8 +50,30 @@ function listPromptfooJsonReports(artifactDir) {
     .sort((left, right) => left.jsonPath.localeCompare(right.jsonPath));
 }
 
+function isExpectedGradingFailure(row) {
+  const candidateError = row?.error || '';
+  if (!candidateError || row?.gradingResult?.pass !== false) {
+    return false;
+  }
+
+  if (
+    candidateError === row.gradingResult.reason
+    && candidateError.startsWith('Output not selected:')
+  ) {
+    return true;
+  }
+
+  return Array.isArray(row.gradingResult.componentResults)
+    && row.gradingResult.componentResults.some((component) => component?.reason === candidateError);
+}
+
 function getInfrastructureError(row) {
-  return String(row?.error || '').trim();
+  const candidateError = String(row?.error || '').trim();
+  if (!candidateError) {
+    return '';
+  }
+
+  return isExpectedGradingFailure(row) ? '' : candidateError;
 }
 
 function getFailureReason(row) {
