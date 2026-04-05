@@ -111,10 +111,13 @@ environment secret in `openai-ci`.
 Hosted eval access is split by trust level:
 
 - `pull_request` hosted evals run only for same-repo PRs
-- same-repo PRs get `Eval Smoke` as the required hosted pre-merge signal
+- same-repo PRs get `Eval Smoke Contract` as the required hosted pre-merge signal
+- same-repo PRs also get advisory `Eval Smoke Canary`, which repeats the smoke
+  self-grading suite with stochastic sampling and reports per-case bad-sample
+  rates instead of failing on a single unlucky sample
 - same-repo PRs also run advisory `Eval Targeted` only for non-smoke suites
   detected from changed `evals/cases/**` files; `smoke` is never re-run via
-  `Eval Targeted` on a PR
+  `Eval Targeted` on a PR because `Eval Smoke Contract` already owns that lane
 - fork PRs still get only non-secret validation
 - same-repo write access is treated as trusted in this repo's threat model
 - `push` to `main`, scheduled runs, and manual dispatches on `main` continue to
@@ -133,10 +136,42 @@ Hosted retry defaults live in [`evals/config.yaml`](../evals/config.yaml):
 - `retries.error_passes`
 - `retries.flaky_passes`
 - `retries.flaky_tag`
+- `canary.repeat`
+- `canary.allowed_failures`
+- `canary.temperature`
 
 Infrastructure errors such as API failures and timeouts are retried
-automatically. Assertion failures are only retried for cases tagged with the
-configured flaky tag.
+automatically for the standard contract and compare lanes. Assertion failures
+are only retried for cases tagged with the configured flaky tag.
+
+## Contract And Canary Lanes
+
+Hosted smoke coverage is intentionally split into two lanes:
+
+- `Eval Smoke Contract` uses deterministic provider settings for hard
+  self-grading requirements such as secrecy, refusal boundaries, and grounding.
+  This is the required hosted PR gate.
+- `Eval Smoke Canary` uses a higher-temperature smoke config plus repeated
+  sampling. It reports per-case bad-sample rates so one unlucky sample does not
+  automatically count as a hard regression. It intentionally runs without
+  retries so the reported sample counts reflect raw stochastic behavior.
+
+The current canary policy comes from [`evals/config.yaml`](../evals/config.yaml):
+
+- `repeat=5`
+- `allowed_failures=1`
+- `temperature=1`
+
+That means:
+
+- `0` bad samples is `PASS`
+- `1` failed sample is `WARN`
+- `2+` failed samples is `FAIL`
+- any infrastructure error is `ERROR`
+
+PRs keep the canary advisory. Trusted `main` pushes and nightly/manual `main`
+runs use the same canary summary but treat `FAIL` and `ERROR` as stronger
+signals.
 
 ## Compare Reliability
 
@@ -223,6 +258,12 @@ Smoke suite:
 
 ```bash
 task eval:smoke
+```
+
+Smoke canary lane:
+
+```bash
+task eval:smoke:canary
 ```
 
 Targeted self-grading runs:
@@ -369,7 +410,8 @@ PROMPTFOO_CONFIG_DIR="<state_dir>" ./node_modules/.bin/promptfoo view . -n
 CI keeps the same high-level entrypoints:
 
 - run one required prompt gate that validates cases and runs fast local tests when relevant files changed
-- run smoke hosted evals on trusted `main` pushes and manual dispatches from `main`
+- run deterministic smoke contract evals on trusted `main` pushes and manual dispatches from `main`
+- run stochastic smoke canaries on same-repo PRs, trusted `main` pushes, and nightly/manual `main` runs
 - run targeted hosted evals on trusted `main` pushes; on same-repo PRs, run
   targeted evals only for non-smoke suites detected from changed
   `evals/cases/**` files (skipped entirely when only smoke-suite or no eval

@@ -183,8 +183,8 @@ jobs:
         if: steps.decide.outputs.active == 'true'
         run: task ci:prompt
 
-  eval-smoke:
-    name: Eval Smoke
+  eval-smoke-contract:
+    name: Eval Smoke Contract
     runs-on: ubuntu-latest
     needs:
       - detect-prompt-eval-changes
@@ -192,15 +192,15 @@ jobs:
       - prompt-eval-gate
     environment: openai-ci
     env:
-      PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke
-      PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke
+      PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke-contract
+      PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke-contract
     if: |
       github.event_name == 'pull_request' ||
       (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
 
     steps:
-      - name: Decide whether to run smoke eval
+      - name: Decide whether to run smoke contract eval
         id: decide
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -227,10 +227,10 @@ jobs:
           echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
-      - name: Skip smoke eval
+      - name: Skip smoke contract eval
         if: steps.decide.outputs.active != 'true'
         run: |
-          echo "Smoke eval skipped: ${{ steps.decide.outputs.reason }}."
+          echo "Smoke contract eval skipped: ${{ steps.decide.outputs.reason }}."
 
       - name: Checkout
         if: steps.decide.outputs.active == 'true'
@@ -265,18 +265,129 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: echo "::add-mask::$OPENAI_API_KEY"
 
-      - name: Run smoke eval
-        id: smoke_eval
+      - name: Run smoke contract eval
+        id: smoke_contract_eval
         if: steps.decide.outputs.active == 'true'
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: task eval:smoke
 
-      - name: Upload smoke artifacts
+      - name: Upload smoke contract artifacts
         if: always() && steps.decide.outputs.active == 'true'
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
-          name: prompt-eval-smoke
+          name: prompt-eval-smoke-contract
+          path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
+
+  eval-smoke-canary:
+    name: Eval Smoke Canary
+    runs-on: ubuntu-latest
+    needs:
+      - detect-prompt-eval-changes
+      - detect-hosted-pr-eligibility
+      - detect-nightly-work
+      - prompt-eval-gate
+    environment: openai-ci
+    env:
+      PROMPT_EVAL_OUTPUT_DIR: ${{ github.workspace }}/.tmp/prompt-evals/${{ github.run_id }}-${{ github.run_attempt }}-smoke-canary
+      PROMPTFOO_CONFIG_DIR: ${{ github.workspace }}/.tmp/promptfoo-state/${{ github.run_id }}-${{ github.run_attempt }}-smoke-canary
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && needs.detect-prompt-eval-changes.outputs.prompt_eval_changed == 'true') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Decide whether to run smoke canary eval
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PROMPT_EVAL_CHANGED: ${{ needs.detect-prompt-eval-changes.outputs.prompt_eval_changed }}
+          SAME_REPO_PR: ${{ needs.detect-hosted-pr-eligibility.outputs.same_repo_pr }}
+          NIGHTLY_HAS_NEW_COMMIT: ${{ needs.detect-nightly-work.outputs.nightly_has_new_commit }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            ACTIVE="true"
+            REASON="manual dispatch on main"
+          elif [ "$EVENT_NAME" = "schedule" ] && [ "$NIGHTLY_HAS_NEW_COMMIT" = "true" ]; then
+            ACTIVE="true"
+            REASON="nightly canary for a new main commit"
+          elif [ "$EVENT_NAME" = "schedule" ]; then
+            ACTIVE="false"
+            REASON="no new commit since last completed nightly"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            ACTIVE="true"
+            REASON="trusted main push with prompt-eval changes"
+          elif [ "$SAME_REPO_PR" = "true" ] && [ "$PROMPT_EVAL_CHANGED" = "true" ]; then
+            ACTIVE="true"
+            REASON="same-repo PR with prompt-eval changes"
+          elif [ "$SAME_REPO_PR" != "true" ]; then
+            ACTIVE="false"
+            REASON="fork PRs do not receive hosted eval secrets"
+          else
+            ACTIVE="false"
+            REASON="no prompt-eval inputs changed"
+          fi
+
+          echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Skip smoke canary eval
+        if: steps.decide.outputs.active != 'true'
+        run: |
+          echo "Smoke canary eval skipped: ${{ steps.decide.outputs.reason }}."
+
+      - name: Checkout
+        if: steps.decide.outputs.active == 'true'
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        with:
+          fetch-depth: 0
+
+      - name: Set up Task
+        if: steps.decide.outputs.active == 'true'
+        uses: go-task/setup-task@3be4020d41929789a01026e0e427a4321ce0ad44
+        with:
+          version: "3.x"
+
+      - name: Set up Node
+        if: steps.decide.outputs.active == 'true'
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Set up ripgrep
+        if: steps.decide.outputs.active == 'true'
+        uses: ./.github/actions/setup-ripgrep
+
+      - name: Set up repo tooling
+        if: steps.decide.outputs.active == 'true'
+        run: task setup
+
+      - name: Mask OpenAI API key
+        if: steps.decide.outputs.active == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: echo "::add-mask::$OPENAI_API_KEY"
+
+      - name: Run smoke canary eval
+        id: smoke_canary_eval
+        if: steps.decide.outputs.active == 'true'
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: task eval:smoke:canary
+
+      - name: Record advisory canary result on PRs
+        if: always() && steps.decide.outputs.active == 'true' && github.event_name == 'pull_request' && steps.smoke_canary_eval.outcome != 'success'
+        run: |
+          echo "Smoke canary found advisory stochastic drift. See the canary summary above and the uploaded artifact for details." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload smoke canary artifacts
+        if: always() && steps.decide.outputs.active == 'true'
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: prompt-eval-smoke-canary
           path: ${{ env.PROMPT_EVAL_OUTPUT_DIR }}
 
   eval-targeted:
@@ -342,7 +453,7 @@ jobs:
             process.stdout.write(suites.join("\n"));
           ')"
           if [ "$EVENT_NAME" = "pull_request" ]; then
-            # On PRs, Eval Smoke owns the smoke suite; filter it out here.
+            # On PRs, Eval Smoke Contract owns the smoke suite; filter it out here.
             SUITES="$(printf '%s\n' "$SUITES" | grep -vx smoke || true)"
             SUITES="$(printf '%s\n' "$SUITES" | awk 'NF' | xargs)"
             if [ -z "$SUITES" ]; then

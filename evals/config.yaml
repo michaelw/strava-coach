@@ -5,6 +5,11 @@ runtime:
   max_output_tokens: 1200
   reasoning_effort: minimal
   text_verbosity: low
+  temperature: 0
+canary:
+  repeat: 5
+  allowed_failures: 1
+  temperature: 1
 retries:
   error_passes: 2
   flaky_passes: 1

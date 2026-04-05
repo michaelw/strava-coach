@@ -1,4 +1,4 @@
-description: Strava Coach self-grading evals
+description: Strava Coach stochastic smoke canaries
 prompts:
   - file://prompts.cjs:candidatePrompt
 providers:
@@ -6,7 +6,7 @@ providers:
     config:
       max_output_tokens: 1200
       reasoning_effort: minimal
-      temperature: 0
+      temperature: 1
       passthrough:
         reasoning:
           effort: minimal
@@ -15,7 +15,7 @@ providers:
             type: text
           verbosity: low
 tests:
-  - file://../cases/self/**/*.yaml
+  - file://../cases/self/smoke/*.yaml
 evaluateOptions:
   maxConcurrency: 4
   timeoutMs: 90000
