@@ -98,9 +98,11 @@ Renovate tracks the following pins and opens update PRs when new releases are
 published:
 
 - **Hugo** (`HUGO_VERSION`) — in `scripts/devcontainer-post-create.sh` and
-  `.github/workflows/ci.yml` via the `hugo pin` custom regex manager.
-- **Task** — the `go-task/setup-task` action pin in `.github/workflows/ci.yml`
-  via the standard `github-actions` manager.
+  `.github/workflows/ci.yml` via the `pinned tool versions` custom regex manager.
+- **Task** (`TASK_VERSION`) — in `scripts/devcontainer-post-create.sh` via the
+  `pinned tool versions` custom regex manager; the `go-task/setup-task` action
+  pin in `.github/workflows/ci.yml` is also tracked via the standard
+  `github-actions` manager.
 - **Prompt baseline** — `evals/config.yaml` via the `prompt baseline release`
   custom regex manager.
 

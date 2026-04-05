@@ -55,9 +55,9 @@
     },
     {
       matchManagers: ['custom.regex'],
-      matchPackageNames: ['gohugoio/hugo'],
-      groupName: 'hugo pin',
-      commitMessageTopic: 'Hugo version',
+      excludePackageNames: ['michaelw/strava-coach'],
+      groupName: 'pinned tool versions',
+      commitMessageTopic: 'tool version',
     },
   ],
 }
