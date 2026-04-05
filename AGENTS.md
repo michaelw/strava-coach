@@ -71,6 +71,10 @@ runtime code.
 
 - When asked to implement a GitHub issue, start by linking the issue and
   printing its title before beginning the implementation work.
+- Unless the user explicitly asks otherwise, base GitHub issue implementation
+  work on the latest upstream default branch before making changes.
+- When implementation work on a GitHub issue begins, set the issue assignee to
+  the person doing the work.
 - If a PR addresses one or more GitHub issues, mention the affected issue numbers
   in the relevant commit messages as well as in the PR context.
 - When a branch name encodes an issue number, include `Fixes #<issue>` in the
