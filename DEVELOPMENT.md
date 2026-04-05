@@ -292,9 +292,9 @@ Useful references:
   `implement-github-issue-42`, make sure the PR title, PR body, or commit
   messages reference `#42` so branch-name validation can tie the work back to
   the issue.
-- Reserve closing keywords like `Fixes #42` for work that fully resolves the
-  issue when merged, and prefer putting that decision in the PR body so the PR
-  creator stays accountable for whether the issue should actually close.
+- Follow the issue-closing policy in [`AGENTS.md`](./AGENTS.md): use a plain
+  issue reference by default, and use a closing keyword like `Fixes #42` only
+  when the merged change fully resolves the issue.
 - Edit [`system_prompt.md`](./system_prompt.md), not the published wrapper page
   in [`content/system-prompt.md`](./content/system-prompt.md).
 - Use `task` commands in docs, reviews, and agent responses unless you are
