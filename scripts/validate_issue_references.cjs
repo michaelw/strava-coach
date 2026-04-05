@@ -149,6 +149,40 @@ function formatIssueList(issueNumbers) {
   return issueNumbers.map((issueNumber) => `#${issueNumber}`).join(', ');
 }
 
+function validateLocalIssueReferences({
+  branchName,
+  baseRef,
+  headRef = 'HEAD',
+  prTitle = '',
+  prBody = '',
+  collectCommits = collectLocalBranchCommits,
+}) {
+  const branchIssues = extractBranchIssueNumbers(branchName);
+  if (branchIssues.length === 0) {
+    return {
+      branchIssues,
+      commits: [],
+      mergeBase: null,
+      missingPrIssues: [],
+      skipped: true,
+    };
+  }
+
+  const { mergeBase, commits } = collectCommits(baseRef, headRef);
+  const result = validateIssueReferences({
+    branchName,
+    prTitle,
+    prBody,
+    commits,
+  });
+
+  return {
+    ...result,
+    commits,
+    mergeBase,
+  };
+}
+
 function buildFailureMessage({ branchName, expectedIssues, missingPrIssues }) {
   const failures = [];
 
@@ -214,12 +248,12 @@ function main() {
 
   const baseRef = options['base-ref'] || resolveDefaultBaseRef();
   const headRef = options['head-ref'] || 'HEAD';
-  const { mergeBase, commits } = collectLocalBranchCommits(baseRef, headRef);
-  const result = validateIssueReferences({
+  const result = validateLocalIssueReferences({
     branchName,
+    baseRef,
+    headRef,
     prTitle: options['pr-title'] === true ? '' : (options['pr-title'] || ''),
     prBody: options['pr-body'] === true ? '' : (options['pr-body'] || ''),
-    commits,
   });
 
   if (result.skipped) {
@@ -237,13 +271,13 @@ function main() {
   if (failureMessage) {
     throw new Error([
       failureMessage,
-      `Local mode compared non-merge commits in ${mergeBase}..${headRef} against ${baseRef}.`,
+      `Local mode compared non-merge commits in ${result.mergeBase}..${headRef} against ${baseRef}.`,
       'CI can also be satisfied by adding the issue reference in the eventual PR title or PR body.',
     ].join('\n\n'));
   }
 
   console.log(
-    `Local issue reference validation passed for ${expectedIssues} on branch "${branchName}" against ${baseRef} (${mergeBase}..${headRef}).`,
+    `Local issue reference validation passed for ${expectedIssues} on branch "${branchName}" against ${baseRef} (${result.mergeBase}..${headRef}).`,
   );
 }
 
@@ -268,5 +302,6 @@ module.exports = {
   resolveCurrentBranchName,
   resolveDefaultBaseRef,
   runGit,
+  validateLocalIssueReferences,
   validateIssueReferences,
 };

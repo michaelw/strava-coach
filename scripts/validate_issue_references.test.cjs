@@ -6,6 +6,7 @@ const {
   extractBranchIssueNumbers,
   formatIssueList,
   messageContainsIssueReference,
+  validateLocalIssueReferences,
   validateIssueReferences,
 } = require('./validate_issue_references.cjs');
 
@@ -59,6 +60,24 @@ test('validateIssueReferences skips branches without explicit issue tokens', () 
   });
 
   assert.equal(result.skipped, true);
+  assert.deepEqual(result.branchIssues, []);
+});
+
+test('validateLocalIssueReferences skips non-issue branches before collecting commits', () => {
+  let collected = false;
+
+  const result = validateLocalIssueReferences({
+    branchName: 'docs/update-homepage',
+    baseRef: 'origin/main',
+    collectCommits: () => {
+      collected = true;
+      throw new Error('should not collect commits for non-issue branches');
+    },
+  });
+
+  assert.equal(result.skipped, true);
+  assert.equal(collected, false);
+  assert.equal(result.mergeBase, null);
   assert.deepEqual(result.branchIssues, []);
 });
 
