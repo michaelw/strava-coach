@@ -55,6 +55,11 @@ function buildIssueReferencePattern(issueNumber) {
   return new RegExp(`(?:#${issue}\\b|issues/${issue}\\b)`, 'i');
 }
 
+function buildFixesIssuePattern(issueNumber) {
+  const issue = escapeRegExp(String(issueNumber));
+  return new RegExp(`\\bfixes\\s+#${issue}\\b`, 'i');
+}
+
 function readPullRequestEvent(eventPath) {
   const payload = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
   if (!payload.pull_request) {
@@ -97,13 +102,17 @@ function messageContainsIssueReference(message, issueNumber) {
   return buildIssueReferencePattern(issueNumber).test(message);
 }
 
+function messageContainsFixesIssueReference(message, issueNumber) {
+  return buildFixesIssuePattern(issueNumber).test(message);
+}
+
 function validateIssueReferences({ branchName, prTitle = '', prBody = '', commits = [] }) {
   const branchIssues = extractBranchIssueNumbers(branchName);
   if (branchIssues.length === 0) {
     return {
       branchIssues,
       missingPrIssues: [],
-      commitsMissingIssues: [],
+      missingFixesCommitBodyIssues: [],
       skipped: true,
     };
   }
@@ -113,11 +122,14 @@ function validateIssueReferences({ branchName, prTitle = '', prBody = '', commit
   const missingPrIssues = branchIssues.filter(
     (issueNumber) => !messageContainsIssueReference(prContext, issueNumber),
   );
+  const missingFixesCommitBodyIssues = branchIssues.filter(
+    (issueNumber) => !commits.some((commit) => messageContainsFixesIssueReference(commit.body || '', issueNumber)),
+  );
 
   return {
     branchIssues,
     missingPrIssues,
-    commitsMissingIssues: [],
+    missingFixesCommitBodyIssues,
     skipped: false,
   };
 }
@@ -161,10 +173,16 @@ function main() {
     );
   }
 
+  if (result.missingFixesCommitBodyIssues.length > 0) {
+    failures.push(
+      `At least one non-merge commit body must contain ${result.missingFixesCommitBodyIssues.map((issueNumber) => `Fixes #${issueNumber}`).join(', ')} because branch "${branchName}" encodes ${expectedIssues}.`,
+    );
+  }
+
   if (failures.length > 0) {
     throw new Error([
       'Issue reference validation failed.',
-      'Add a plain reference like "#<issue-ref>" unless the PR or commit fully resolves the issue and should use a closing keyword.',
+      'Add a plain reference like "#<issue-ref>" in the PR context and include `Fixes #<issue-ref>` in the body of at least one non-merge commit for each branch-encoded issue.',
       ...failures,
     ].join('\n\n'));
   }
@@ -185,6 +203,7 @@ module.exports = {
   buildIssueReferencePattern,
   collectPullRequestCommits,
   extractBranchIssueNumbers,
+  messageContainsFixesIssueReference,
   messageContainsIssueReference,
   parseArgs,
   readPullRequestEvent,

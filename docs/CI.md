@@ -38,7 +38,8 @@ Does not run:
 `Lint And Validate`:
 
 - validates PR issue references when the branch name carries an issue token such
-  as `issue-26`
+  as `issue-26`, including a `Fixes #<issue>` line in at least one non-merge
+  commit body
 - re-runs diff-scoped `pre-commit` on the PR diff
 - runs the full Hugo site build
 
@@ -117,8 +118,9 @@ gh workflow run prompt-eval.yml --ref main -f run_nightly_full=true
 Usually nothing beyond local `pre-commit`.
 
 If the branch name includes an issue token such as `issue-42`, make sure the PR
-title or body references that issue and each non-merge commit message does too.
-Use a plain reference like `#42` unless the PR or commit fully resolves it.
+title or body references that issue and at least one non-merge commit body
+contains `Fixes #42`. Use plain `#42` references elsewhere unless the commit
+body is the designated closing reference.
 
 If you touched layouts, Hugo config, or rendering behavior, also run:
 
