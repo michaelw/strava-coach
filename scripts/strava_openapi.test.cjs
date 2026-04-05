@@ -5,56 +5,41 @@ const path = require('node:path');
 const yaml = require('js-yaml');
 
 const specPath = path.join(__dirname, '..', 'actions', 'strava.openapi.yaml');
+const officialFixturePath = path.join(__dirname, 'fixtures', 'strava_openapi_official_subset.json');
 const spec = yaml.load(fs.readFileSync(specPath, 'utf8'));
+const officialFixture = JSON.parse(fs.readFileSync(officialFixturePath, 'utf8'));
 
-test('core Strava responses use explicit $ref schemas', () => {
-  assert.equal(
-    spec.paths['/athlete'].get.responses['200'].content['application/json'].schema.$ref,
-    '#/components/schemas/Athlete',
-  );
-  assert.equal(
-    spec.paths['/athlete/activities'].get.responses['200'].content['application/json'].schema.items.$ref,
-    '#/components/schemas/ActivitySummary',
-  );
-  assert.equal(
-    spec.paths['/activities/{id}'].get.responses['200'].content['application/json'].schema.$ref,
-    '#/components/schemas/ActivityDetail',
-  );
+test('local Strava action spec matches the vendored official subset exactly', () => {
+  const localWithoutExtension = structuredClone(spec);
+  localWithoutExtension.paths['/activities/{id}/streams'].get.parameters =
+    localWithoutExtension.paths['/activities/{id}/streams'].get.parameters.filter(
+      (parameter) => parameter.name !== 'resolution',
+    );
+
+  assert.deepEqual(localWithoutExtension, officialFixture.official_spec);
 });
 
-test('activity schemas cover fields used by tracked fixtures', () => {
-  const summaryProperties = spec.components.schemas.ActivitySummary.properties;
-  const detailProperties = spec.components.schemas.ActivityDetail.properties;
-
-  assert.ok(summaryProperties.start_date_local);
-  assert.ok(summaryProperties.average_speed);
-  assert.ok(summaryProperties.average_heartrate);
-  assert.ok(summaryProperties.average_watts);
-
-  assert.ok(detailProperties.start_date_local);
-  assert.ok(detailProperties.average_speed);
-  assert.ok(detailProperties.average_heartrate);
-  assert.ok(detailProperties.average_watts);
+test('vendored official subset metadata documents the selected Strava sources', () => {
+  assert.deepEqual(officialFixture.selected_paths, [
+    '/athlete',
+    '/athlete/zones',
+    '/athletes/{id}/stats',
+    '/athlete/activities',
+    '/activities/{id}',
+    '/activities/{id}/streams',
+    '/activities/{id}/zones',
+  ]);
+  assert.ok(officialFixture.source_urls.includes('https://developers.strava.com/swagger/swagger.json'));
+  assert.ok(officialFixture.source_urls.includes('https://developers.strava.com/swagger/activity.json'));
 });
 
-test('activity streams response distinguishes usable streams from explicit errors', () => {
-  const streamResponseSchema =
-    spec.paths['/activities/{id}/streams'].get.responses['200'].content['application/json'].schema;
-
-  assert.equal(streamResponseSchema.oneOf.length, 2);
-  assert.deepEqual(
-    streamResponseSchema.oneOf.map((entry) => entry.$ref),
-    [
-      '#/components/schemas/ActivityStreams',
-      '#/components/schemas/StreamErrorResponse',
-    ],
+test('local streams endpoint exposes the optional resolution extension', () => {
+  const resolutionParam = spec.paths['/activities/{id}/streams'].get.parameters.find(
+    (parameter) => parameter.name === 'resolution',
   );
 
-  const streamSchema = spec.components.schemas.ActivityStream;
-  assert.deepEqual(streamSchema.required, ['data']);
-  assert.equal(streamSchema.properties.data.type, 'array');
-  assert.deepEqual(
-    streamSchema.properties.data.items.oneOf.map((entry) => entry.type),
-    ['number', 'array'],
-  );
+  assert.ok(resolutionParam);
+  assert.equal(resolutionParam.in, 'query');
+  assert.equal(resolutionParam.required, false);
+  assert.deepEqual(resolutionParam.schema.enum, ['low', 'medium', 'high']);
 });

@@ -100,6 +100,11 @@ tasks:
     cmds:
       - PROMPTFOO_CONFIG_DIR=.promptfoo PROMPTFOO_DISABLE_WAL_MODE=true node --test $(rg --files evals/promptfoo evals/capture scripts -g '*.test.cjs')
 
+  openapi:sync:
+    desc: Regenerate the local Strava OpenAPI subset from Strava's published Swagger
+    cmds:
+      - node scripts/sync_strava_openapi_subset.cjs --write
+
   eval:validate:
     desc: Validate Promptfoo case files
     cmds:
@@ -191,15 +196,25 @@ tasks:
           --destination "${HUGO_DESTINATION:-public}" \
           {{.CLI_ARGS}}
 
+  capture:strava:auth:
+    desc: Start a local Strava OAuth flow on a random localhost port and store refreshable auth locally
+    cmds:
+      - node evals/capture/strava_capture.cjs auth
+
   capture:strava:auth-url:
-    desc: Print the Strava OAuth authorization URL
+    desc: Print the Strava OAuth authorization URL (manual fallback)
     cmds:
       - node evals/capture/strava_capture.cjs auth-url
 
   capture:strava:exchange-code:
-    desc: Exchange a Strava OAuth code and store refreshable auth locally
+    desc: Exchange a Strava OAuth code and store refreshable auth locally (manual fallback)
     cmds:
       - node evals/capture/strava_capture.cjs exchange-code {{.CLI_ARGS}}
+
+  capture:strava:streams:
+    desc: "Fetch raw Strava streams for one activity; pass args after --, for example: task capture:strava:streams -- --activity-id 123 --keys time,distance"
+    cmds:
+      - node evals/capture/strava_capture.cjs streams {{.CLI_ARGS}}
 
   capture:strava:capture:
     desc: "Capture a raw Strava fixture bundle. No args uses defaults; pass optional args after --, for example: task capture:strava:capture -- --label private-notes --activity-id 123"
