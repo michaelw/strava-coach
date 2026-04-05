@@ -9,7 +9,8 @@ tasks:
     aliases: [list, ls, help]
     desc: List available tasks
     cmds:
-      - task --list
+      # Task 3.49+ reduces `task --list` to names-only output when silent mode is on.
+      - task --silent=false --list
 
   setup:
     desc: Install repo tooling for local/devcontainer/CI use
