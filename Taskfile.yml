@@ -34,17 +34,17 @@ tasks:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install
         fi
       - |
-        if command -v pre-commit >/dev/null 2>&1; then
-          if [ -z "${CI:-}" ]; then
-            GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || true)"
-            if [ -n "$GIT_DIR" ] && [ -w "$GIT_DIR/hooks" ]; then
+        if [ -z "${CI:-}" ]; then
+          HOOKS_DIR="$(git rev-parse --git-path hooks 2>/dev/null || true)"
+          if [ -n "$HOOKS_DIR" ] && [ -w "$HOOKS_DIR" ]; then
+            if command -v pre-commit >/dev/null 2>&1; then
               pre-commit install
             else
-              echo "Skipping pre-commit install because git hooks are not writable in this environment."
+              echo "pre-commit is not installed; task setup skipped pre-commit hook installation."
             fi
+          else
+            echo "Skipping git hook installation because git hooks are not writable in this environment."
           fi
-        else
-          echo "pre-commit is not installed; task setup skipped hook installation."
         fi
 
   check:

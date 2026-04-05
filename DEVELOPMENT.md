@@ -264,11 +264,12 @@ Useful references:
 - If a PR addresses a GitHub issue, include the issue reference in the relevant
   commit message too, for example `#42` or `Fixes #42`.
 - If the PR branch name explicitly carries an issue token such as
-  `implement-github-issue-42`, CI will require the issue to be referenced
-  somewhere in the PR — in the title, body, or at least one commit message.
-- Reserve closing keywords like `Fixes #42` for commits and PRs that will fully
-  resolve the issue when merged. Use a non-closing reference when the work is
-  partial.
+  `implement-github-issue-42`, make sure the PR title, PR body, or commit
+  messages reference `#42` so branch-name validation can tie the work back to
+  the issue.
+- Reserve closing keywords like `Fixes #42` for work that fully resolves the
+  issue when merged, and prefer putting that decision in the PR body so the PR
+  creator stays accountable for whether the issue should actually close.
 - Edit [`system_prompt.md`](./system_prompt.md), not the published wrapper page
   in [`content/system-prompt.md`](./content/system-prompt.md).
 - Use `task` commands in docs, reviews, and agent responses unless you are
