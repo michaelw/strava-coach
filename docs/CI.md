@@ -38,6 +38,8 @@ Does not run:
 
 `Lint And Validate`:
 
+- also reruns when a PR title or body is edited so PR issue-reference checks
+  see current metadata
 - validates PR issue references when the branch name carries an issue token such
   as `issue-26`
 - re-runs diff-scoped `pre-commit` on the PR diff
@@ -66,6 +68,7 @@ Same-repo PRs:
 Fork or docs-only PRs:
 
 - hosted prompt jobs skip or exit quickly without doing secret-backed work
+- PR title/body-only edits do not trigger hosted prompt-eval workflows
 
 ### Push To `main`
 
