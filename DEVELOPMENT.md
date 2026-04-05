@@ -74,6 +74,16 @@ reapply the local OpenAI action importer compatibility transforms:
 task openapi:sync
 ```
 
+The generated local action spec intentionally advertises Strava's upstream
+`info.version` with local build metadata such as `3.0.0+strava-coach.1`. The
+vendored `official_spec` fixture keeps the upstream `info.version` unchanged.
+
+When local-only transforms change the generated action spec without a Strava
+upstream version change, increment the `strava-coach.N` suffix in
+[`scripts/sync_strava_openapi_subset.cjs`](./scripts/sync_strava_openapi_subset.cjs)
+and rerun `task openapi:sync` so the generated spec advertises a new local fork
+revision.
+
 Run pre-commit on all tracked files:
 
 ```bash

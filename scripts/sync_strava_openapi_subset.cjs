@@ -30,6 +30,7 @@ const SECURITY_BY_PATH = {
 
 const LOCAL_ACTIVITY_DESCRIPTION =
   'Returns the given activity that is owned by the authenticated athlete. Requires activity:read for Everyone and Followers activities and activity:read_all for Only Me activities.';
+const LOCAL_FORK_BUILD_METADATA = 'strava-coach.1';
 
 const TIMED_ZONE_DISTRIBUTION_SCHEMA = {
   type: 'array',
@@ -271,7 +272,10 @@ function convertSecurityScheme(swagger) {
 }
 
 function applyLocalExtensions(spec) {
+  // Keep the OpenAPI document format version separate from the Strava upstream
+  // API version while making the local fork revision explicit to consumers.
   spec.openapi = '3.1.0';
+  spec.info.version = `${spec.info.version}+${LOCAL_FORK_BUILD_METADATA}`;
   spec.paths['/activities/{id}'].get.description = LOCAL_ACTIVITY_DESCRIPTION;
   spec.components.schemas.ActivityZone.properties.distribution_buckets = {
     $ref: '#/components/schemas/TimedZoneDistribution',

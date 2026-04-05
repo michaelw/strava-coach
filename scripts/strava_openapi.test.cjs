@@ -12,6 +12,8 @@ const localSpecFixture = officialFixture.spec;
 
 const LOCAL_ACTIVITY_DESCRIPTION =
   'Returns the given activity that is owned by the authenticated athlete. Requires activity:read for Everyone and Followers activities and activity:read_all for Only Me activities.';
+const UPSTREAM_SPEC_VERSION = '3.0.0';
+const LOCAL_SPEC_VERSION = '3.0.0+strava-coach.1';
 
 test('local Strava action spec matches the generated local fixture exactly', () => {
   assert.deepEqual(spec, localSpecFixture);
@@ -34,6 +36,8 @@ test('vendored official subset metadata documents the selected Strava sources', 
 test('local Strava action spec documents importer-compatibility transforms explicitly', () => {
   assert.equal(officialFixture.official_spec.openapi, '3.0.3');
   assert.equal(spec.openapi, '3.1.0');
+  assert.equal(officialFixture.official_spec.info.version, UPSTREAM_SPEC_VERSION);
+  assert.equal(spec.info.version, LOCAL_SPEC_VERSION);
 
   assert.equal(
     officialFixture.official_spec.paths['/activities/{id}'].get.description.includes('![Attribution]'),
