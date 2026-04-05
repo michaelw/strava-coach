@@ -9,6 +9,7 @@ const { RESOLVED_BASELINE_PROMPT_PATH_ENV } = require('../prompts/baseline.cjs')
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CANDIDATE_PROMPT_PATH = path.join(ROOT, 'system_prompt.md');
+const CHATGPT_INSTRUCTIONS_CHAR_LIMIT = 8000;
 
 function buildContext() {
   return {
@@ -27,6 +28,15 @@ test('candidate prompt reads the raw repo-root system prompt file', () => {
   assert.ok(rendered.includes(`System instructions:\n${promptText}\nHarness instructions:`));
   assert.doesNotMatch(rendered, /```/);
   assert.doesNotMatch(rendered, /This file is the source of truth for the public/);
+});
+
+test('candidate system prompt stays within the ChatGPT instructions limit', () => {
+  const promptText = fs.readFileSync(CANDIDATE_PROMPT_PATH, 'utf8').trim();
+
+  assert.ok(
+    promptText.length <= CHATGPT_INSTRUCTIONS_CHAR_LIMIT,
+    `system_prompt.md is ${promptText.length} characters, exceeding the ${CHATGPT_INSTRUCTIONS_CHAR_LIMIT}-character ChatGPT limit`,
+  );
 });
 
 test('baseline prompt reads the resolved baseline prompt artifact path', async (t) => {

@@ -16,7 +16,9 @@ test('strava capture script prints help', () => {
   const result = runNodeScript(path.join(repoRoot, 'evals/capture/strava_capture.cjs'), ['--help']);
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Usage: node evals\/capture\/strava_capture\.cjs/);
+  assert.match(result.stdout, /auth\s+Start a local OAuth callback server/);
   assert.match(result.stdout, /exchange-code --code <code>/);
+  assert.match(result.stdout, /Authorization Callback Domain to localhost/);
 });
 
 test('gpt capture script prints help', () => {

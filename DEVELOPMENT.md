@@ -60,6 +60,12 @@ Fast non-hosted prompt-domain checks:
 task check
 ```
 
+Regenerate the local Strava OpenAPI subset from Strava's published Swagger:
+
+```bash
+task openapi:sync
+```
+
 Run pre-commit on all tracked files:
 
 ```bash
@@ -128,6 +134,13 @@ Run:
 
 ```bash
 task verify
+```
+
+If you are updating the Strava action schema to track the published API,
+regenerate it first:
+
+```bash
+task openapi:sync
 ```
 
 ## Promptfoo Workflows
@@ -200,11 +213,22 @@ Important notes:
 Use the existing Taskfile wrappers instead of invoking capture scripts by hand:
 
 ```bash
-task capture:strava:auth-url
-task capture:strava:exchange-code -- --code <code>
+task capture:strava:auth
+task capture:strava:streams -- --activity-id <id> --keys time,distance --resolution medium
 task capture:strava:capture -- --label <label> --activity-id <id>
 task capture:gpt -- --scenario <scenario>
 task capture:promote -- --kind <kind> --source <raw.json> --id <fixture-id>
+```
+
+Before running `task capture:strava:auth`, set the Strava App Authorization
+Callback Domain to `localhost`. After the local auth flow finishes, switch the
+callback domain back to `chat.openai.com` for the Custom GPT integration.
+
+Manual fallback if browser auto-open or the localhost callback flow is blocked:
+
+```bash
+task capture:strava:auth-url
+task capture:strava:exchange-code -- --code <code>
 ```
 
 Rules for capture work:
