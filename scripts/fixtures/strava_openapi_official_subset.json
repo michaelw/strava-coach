@@ -1939,7 +1939,7 @@
     }
   },
   "spec": {
-    "openapi": "3.0.3",
+    "openapi": "3.1.0",
     "info": {
       "title": "Strava API v3",
       "description": "The [Swagger Playground](https://developers.strava.com/playground) is the easiest way to familiarize yourself with the Strava API by submitting HTTP requests and observing the responses before you write any client code. It will show what a response will look like with different endpoints depending on the authorization scope you receive from your athletes. To use the Playground, go to https://www.strava.com/settings/api and change your “Authorization Callback Domain” to developers.strava.com. Please note, we only support Swagger 2.0. There is a known issue where you can only select one scope at a time. For more information, please check the section “client code” at https://developers.strava.com/docs.",
@@ -2164,7 +2164,7 @@
         "get": {
           "operationId": "getActivityById",
           "summary": "Get Activity",
-          "description": "Returns the given activity that is owned by the authenticated athlete. Requires activity:read for Everyone and Followers activities. Requires activity:read_all for Only Me activities.\n\nWe strongly encourage you to display the appropriate attribution that identifies Garmin as the data source and the device name in your application. Please see example below from VeloViewer (that provides an attribution for a Garmin Forerunner device).\n\n![Attribution](/images/device-attribution-image.png)",
+          "description": "Returns the given activity that is owned by the authenticated athlete. Requires activity:read for Everyone and Followers activities and activity:read_all for Only Me activities.",
           "tags": [
             "Activities"
           ],
@@ -2837,7 +2837,7 @@
               "type": "integer"
             },
             "distribution_buckets": {
-              "$ref": "#/TimedZoneDistribution"
+              "$ref": "#/components/schemas/TimedZoneDistribution"
             },
             "type": {
               "type": "string",
@@ -3867,6 +3867,26 @@
             "effort_count": {
               "type": "integer",
               "description": "Number of efforts by the authenticated athlete on this segment."
+            }
+          }
+        },
+        "TimedZoneDistribution": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "integer",
+                "description": "The lower bound of the zone range."
+              },
+              "max": {
+                "type": "integer",
+                "description": "The upper bound of the zone range."
+              },
+              "time": {
+                "type": "integer",
+                "description": "The number of seconds spent in the zone range."
+              }
             }
           }
         }
