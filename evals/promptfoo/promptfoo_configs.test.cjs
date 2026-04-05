@@ -1,14 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const os = require('os');
 const path = require('path');
 
 const {
   DEFAULT_BASELINE_CONFIG,
   DEFAULT_RETRY_POLICY,
+  expandCompareConfig,
   readBaselineConfig,
   readRepoConfig,
   readRetryPolicy,
   readYaml,
+  writeExpandedCompareConfig,
 } = require('./config.cjs');
 const { deriveVersionFromUrl } = require('../prompts/baseline.cjs');
 
@@ -34,6 +37,34 @@ test('compare promptfoo config points at candidate and baseline prompts and comp
   assert.deepEqual(config.tests, ['file://../cases/compare/**/*.yaml']);
   assert.equal(config.evaluateOptions.maxConcurrency, 4);
   assert.equal(config.evaluateOptions.timeoutMs, 90000);
+});
+
+test('expanded compare config duplicates cases to match declared repeat counts', () => {
+  const expandedConfig = expandCompareConfig(COMPARE_CONFIG_PATH);
+
+  assert.equal(expandedConfig.prompts.length, 2);
+  for (const prompt of expandedConfig.prompts) {
+    assert.match(prompt, /^file:\/\/\/.*evals\/promptfoo\/prompts\.cjs:/);
+  }
+  assert.equal(expandedConfig.tests.length, 8);
+  assert.equal(
+    expandedConfig.tests.filter((entry) => entry.endsWith('/evals/cases/compare/personalization/personalization-001.yaml')).length,
+    5,
+  );
+  assert.equal(
+    expandedConfig.tests.filter((entry) => entry.endsWith('/evals/cases/compare/personalization/personalization-003.yaml')).length,
+    3,
+  );
+});
+
+test('writeExpandedCompareConfig materializes an explicit repeated compare config on disk', () => {
+  const outputPath = path.join(os.tmpdir(), 'strava-coach-expanded-compare-config.yaml');
+
+  writeExpandedCompareConfig(COMPARE_CONFIG_PATH, outputPath);
+  const materialized = readYaml(outputPath);
+
+  assert.equal(materialized.tests.length, 8);
+  assert.match(materialized.tests[0], /^file:\/\/\/.*\.yaml$/);
 });
 
 test('native promptfoo configs inline the current repo runtime settings', () => {

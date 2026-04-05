@@ -120,6 +120,7 @@ function createEmptyCompareCounts() {
     baseline: 0,
     tie: 0,
     unknown: 0,
+    errors: 0,
   };
 }
 
@@ -127,6 +128,7 @@ function countCompareWinners(entries) {
   const counts = createEmptyCompareCounts();
   for (const entry of entries) {
     if (entry.status === 'error') {
+      counts.errors += 1;
       continue;
     }
     const winner = entry.winner || 'unknown';
@@ -135,8 +137,16 @@ function countCompareWinners(entries) {
   return counts;
 }
 
+function countDecisiveCompareRepeats(compareCounts) {
+  return compareCounts.candidate + compareCounts.baseline;
+}
+
+function countVisibleCompareRepeats(compareCounts) {
+  return compareCounts.candidate + compareCounts.baseline + compareCounts.tie + compareCounts.unknown;
+}
+
 function inferReliableCompareDecision(compareCounts) {
-  const decisive = compareCounts.candidate + compareCounts.baseline;
+  const decisive = countDecisiveCompareRepeats(compareCounts);
   if (decisive < 3) {
     return 'noisy';
   }
@@ -150,7 +160,24 @@ function inferReliableCompareDecision(compareCounts) {
 }
 
 function formatCompareCounts(compareCounts) {
-  return `candidate=${compareCounts.candidate} baseline=${compareCounts.baseline} tie=${compareCounts.tie} unknown=${compareCounts.unknown}`;
+  const parts = [
+    `candidate=${compareCounts.candidate}`,
+    `baseline=${compareCounts.baseline}`,
+    `tie=${compareCounts.tie}`,
+    `unknown=${compareCounts.unknown}`,
+  ];
+  if (compareCounts.errors > 0) {
+    parts.push(`errors=${compareCounts.errors}`);
+  }
+  return parts.join(' ');
+}
+
+function formatCompareSummary(test) {
+  const parts = [formatCompareCounts(test.compareCounts)];
+  if (test.compareCounts?.errors > 0 && test.repeat) {
+    parts.push(`decisive=${countDecisiveCompareRepeats(test.compareCounts)}/${test.repeat}`);
+  }
+  return parts.join(' ');
 }
 
 function formatDisplayPath(filePath) {
@@ -189,7 +216,7 @@ function formatAttentionEntry(test) {
     parts.push(`decision=${test.compareDecision}`);
   }
   if (test.compareCounts) {
-    parts.push(formatCompareCounts(test.compareCounts));
+    parts.push(formatCompareSummary(test));
   }
   if (test.gateStatus) {
     parts.push(`gate=${test.gateStatus}`);
@@ -370,7 +397,7 @@ function aggregateLogicalTests(phases) {
       if (finalAttempt.phase.startsWith('compare')) {
         const compareCounts = countCompareWinners(sortedHistory);
         const compareDecision = inferReliableCompareDecision(compareCounts);
-        const hasNonErrorCompareResult = Object.values(compareCounts).some((count) => count > 0);
+        const hasNonErrorCompareResult = countVisibleCompareRepeats(compareCounts) > 0;
         const hadFailingAttempt = attemptGroups.slice(0, -1).some((group) => {
           const attemptCounts = countCompareWinners(group.entries);
           const attemptDecision = inferReliableCompareDecision(attemptCounts);
@@ -402,7 +429,7 @@ function aggregateLogicalTests(phases) {
           attemptCount: attemptGroups.length,
           compareCounts,
           compareDecision,
-          decisiveRepeatCount: compareCounts.candidate + compareCounts.baseline,
+          decisiveRepeatCount: countDecisiveCompareRepeats(compareCounts),
           gateStatus,
           reason: finalStatus === 'failed'
             ? `Reliable compare loss: decision=${compareDecision}; ${formatCompareCounts(compareCounts)}`
@@ -519,7 +546,7 @@ function buildMarkdownSummary(runReport) {
         parts.push(`decision=${test.compareDecision}`);
       }
       if (test.compareCounts) {
-        parts.push(formatCompareCounts(test.compareCounts));
+        parts.push(formatCompareSummary(test));
       }
       if (test.gateStatus) {
         parts.push(`gate=${test.gateStatus}`);

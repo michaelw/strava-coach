@@ -14,6 +14,23 @@ const DEFAULT_BASELINE_CONFIG = Object.freeze({
   url: '',
 });
 
+function listFilesRecursive(rootDir) {
+  if (!fs.existsSync(rootDir)) {
+    return [];
+  }
+
+  const files = [];
+  for (const entry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+    const entryPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...listFilesRecursive(entryPath));
+    } else if (entry.isFile()) {
+      files.push(entryPath);
+    }
+  }
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
 function readYaml(filePath) {
   return yaml.load(fs.readFileSync(filePath, 'utf8'));
 }
@@ -69,12 +86,123 @@ function readBaselineConfig(configPath = DEFAULT_REPO_CONFIG_PATH) {
   };
 }
 
+function parsePromptfooFileRef(ref) {
+  if (typeof ref !== 'string' || !ref.startsWith('file://')) {
+    return null;
+  }
+
+  const raw = ref.slice('file://'.length);
+  const lastSlash = raw.lastIndexOf('/');
+  const exportSeparator = raw.indexOf(':', lastSlash + 1);
+  if (exportSeparator === -1) {
+    return {
+      filePath: raw,
+      suffix: '',
+    };
+  }
+
+  return {
+    filePath: raw.slice(0, exportSeparator),
+    suffix: raw.slice(exportSeparator),
+  };
+}
+
+function toPromptfooFileRef(filePath, suffix = '') {
+  return `file://${filePath}${suffix}`;
+}
+
+function absolutizePromptfooFileRef(ref, baseDir) {
+  const parsed = parsePromptfooFileRef(ref);
+  if (!parsed) {
+    return ref;
+  }
+
+  return toPromptfooFileRef(path.resolve(baseDir, parsed.filePath), parsed.suffix);
+}
+
+function expandPromptfooTestEntry(entry, baseDir) {
+  const parsed = parsePromptfooFileRef(entry);
+  if (!parsed) {
+    return [entry];
+  }
+
+  if (!parsed.filePath.includes('*')) {
+    return [path.resolve(baseDir, parsed.filePath)];
+  }
+
+  if (parsed.suffix) {
+    throw new Error(`Unsupported Promptfoo test glob with export suffix: ${entry}`);
+  }
+
+  const recursiveYamlGlob = '/**/*.yaml';
+  if (!parsed.filePath.endsWith(recursiveYamlGlob)) {
+    throw new Error(`Unsupported Promptfoo test glob: ${entry}`);
+  }
+
+  const rootDir = path.resolve(baseDir, parsed.filePath.slice(0, -recursiveYamlGlob.length));
+  return listFilesRecursive(rootDir).filter((filePath) => filePath.endsWith('.yaml'));
+}
+
+function normalizeRepeat(value) {
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+  return parsed;
+}
+
+function expandCompareConfig(configPath) {
+  const config = readYaml(configPath);
+  const baseDir = path.dirname(configPath);
+  const tests = Array.isArray(config.tests) ? config.tests : [];
+  const expandedTests = [];
+
+  for (const entry of tests) {
+    const resolvedFiles = expandPromptfooTestEntry(entry, baseDir);
+    for (const filePath of resolvedFiles) {
+      if (typeof filePath !== 'string' || !filePath.endsWith('.yaml')) {
+        expandedTests.push(filePath);
+        continue;
+      }
+
+      const testCase = readYaml(filePath) || {};
+      const repeat = normalizeRepeat(testCase.repeat);
+      const promptfooFileRef = toPromptfooFileRef(filePath);
+      for (let index = 0; index < repeat; index += 1) {
+        expandedTests.push(promptfooFileRef);
+      }
+    }
+  }
+
+  return {
+    ...config,
+    prompts: Array.isArray(config.prompts)
+      ? config.prompts.map((prompt) => absolutizePromptfooFileRef(prompt, baseDir))
+      : config.prompts,
+    tests: expandedTests,
+  };
+}
+
+function writeExpandedCompareConfig(configPath, outputPath) {
+  const expandedConfig = expandCompareConfig(configPath);
+  fs.writeFileSync(outputPath, yaml.dump(expandedConfig, {
+    lineWidth: -1,
+    noRefs: true,
+  }), 'utf8');
+  return outputPath;
+}
+
 module.exports = {
   DEFAULT_BASELINE_CONFIG,
   DEFAULT_REPO_CONFIG_PATH,
   DEFAULT_RETRY_POLICY,
+  expandCompareConfig,
+  expandPromptfooTestEntry,
+  parsePromptfooFileRef,
   readBaselineConfig,
   readRepoConfig,
   readRetryPolicy,
   readYaml,
+  toPromptfooFileRef,
+  writeExpandedCompareConfig,
 };

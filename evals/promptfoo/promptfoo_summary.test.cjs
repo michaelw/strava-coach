@@ -38,10 +38,10 @@ test('inferCompareWinner distinguishes candidate, baseline, and unknown results'
 });
 
 test('inferReliableCompareDecision requires enough decisive repeats and a two-vote margin', () => {
-  assert.equal(inferReliableCompareDecision({ candidate: 3, baseline: 0, tie: 0, unknown: 0 }), 'candidate');
-  assert.equal(inferReliableCompareDecision({ candidate: 0, baseline: 3, tie: 0, unknown: 0 }), 'baseline');
-  assert.equal(inferReliableCompareDecision({ candidate: 2, baseline: 1, tie: 0, unknown: 0 }), 'tie');
-  assert.equal(inferReliableCompareDecision({ candidate: 1, baseline: 1, tie: 1, unknown: 0 }), 'noisy');
+  assert.equal(inferReliableCompareDecision({ candidate: 3, baseline: 0, tie: 0, unknown: 0, errors: 0 }), 'candidate');
+  assert.equal(inferReliableCompareDecision({ candidate: 0, baseline: 3, tie: 0, unknown: 0, errors: 0 }), 'baseline');
+  assert.equal(inferReliableCompareDecision({ candidate: 2, baseline: 1, tie: 0, unknown: 0, errors: 0 }), 'tie');
+  assert.equal(inferReliableCompareDecision({ candidate: 1, baseline: 1, tie: 1, unknown: 0, errors: 0 }), 'noisy');
 });
 
 test('parseArtifactFileName distinguishes initial and retry artifacts', () => {
@@ -379,6 +379,7 @@ test('buildCombinedReport aggregates logical tests across phases and markdown li
     baseline: 1,
     tie: 0,
     unknown: 0,
+    errors: 0,
   });
   assert.match(markdown, /grounding\/grounding-001/);
   assert.match(markdown, /personalization\/personalization-001/);
@@ -790,6 +791,7 @@ test('aggregateLogicalTests treats split compare repeats as non-failing tie or n
     baseline: 2,
     tie: 0,
     unknown: 0,
+    errors: 0,
   });
   assert.equal(advisory.status, 'passed');
   assert.equal(advisory.compareDecision, 'noisy');
@@ -799,7 +801,132 @@ test('aggregateLogicalTests treats split compare repeats as non-failing tie or n
     baseline: 1,
     tie: 0,
     unknown: 1,
+    errors: 0,
   });
+});
+
+test('buildMarkdownSummary clarifies noisy compare summaries when repeats error out', () => {
+  const runReport = buildCombinedReport({
+    artifactDir: '/tmp/artifacts/workflow-001',
+    phaseReports: [
+      {
+        phaseName: 'compare.personalization',
+        phaseMode: 'compare',
+        jsonPath: '/tmp/artifacts/workflow-001/compare.personalization.json',
+        attemptKind: 'initial',
+        attemptNumber: 0,
+        attemptOrder: 0,
+        report: createPromptfooReport([
+          {
+            testIdx: 0,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 3,
+              metadata: {
+                id: 'personalization-003',
+                suite: 'personalization',
+                compare_gate: 'advisory',
+              },
+            },
+          },
+          {
+            testIdx: 0,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 3,
+              metadata: {
+                id: 'personalization-003',
+                suite: 'personalization',
+                compare_gate: 'advisory',
+              },
+            },
+          },
+          {
+            testIdx: 1,
+            promptIdx: 0,
+            success: false,
+            latencyMs: 1200,
+            gradingResult: {
+              reason: 'The baseline response was selected as the better answer.',
+            },
+            testCase: {
+              repeat: 3,
+              metadata: {
+                id: 'personalization-003',
+                suite: 'personalization',
+                compare_gate: 'advisory',
+              },
+            },
+          },
+          {
+            testIdx: 1,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 3,
+              metadata: {
+                id: 'personalization-003',
+                suite: 'personalization',
+                compare_gate: 'advisory',
+              },
+            },
+          },
+          {
+            testIdx: 2,
+            promptIdx: 0,
+            success: false,
+            error: 'API error: timeout',
+            latencyMs: 1200,
+            testCase: {
+              repeat: 3,
+              metadata: {
+                id: 'personalization-003',
+                suite: 'personalization',
+                compare_gate: 'advisory',
+              },
+            },
+          },
+          {
+            testIdx: 2,
+            promptIdx: 1,
+            success: true,
+            latencyMs: 1200,
+            testCase: {
+              repeat: 3,
+              metadata: {
+                id: 'personalization-003',
+                suite: 'personalization',
+                compare_gate: 'advisory',
+              },
+            },
+          },
+        ], [{ label: 'candidate' }, { label: 'baseline' }]),
+      },
+    ],
+  });
+
+  const markdown = buildMarkdownSummary(runReport);
+
+  assert.equal(runReport.result, 'PASS');
+  assert.equal(runReport.tests[0].compareDecision, 'noisy');
+  assert.deepEqual(runReport.tests[0].compareCounts, {
+    candidate: 0,
+    baseline: 2,
+    tie: 0,
+    unknown: 0,
+    errors: 1,
+  });
+  assert.match(markdown, /decision=noisy/);
+  assert.match(markdown, /candidate=0 baseline=2 tie=0 unknown=0 errors=1 decisive=2\/3/);
+  assert.match(markdown, /gate=pass/);
 });
 
 test('buildCombinedReport fails only on reliable compare losses', () => {
