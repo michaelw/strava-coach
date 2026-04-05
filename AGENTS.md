@@ -77,10 +77,12 @@ runtime code.
   the person doing the work.
 - If a PR addresses one or more GitHub issues, mention the affected issue numbers
   in the relevant commit messages as well as in the PR context.
-- When a branch name encodes an issue number, include `Fixes #<issue>` in the
-  body of at least one non-merge commit in the PR for each encoded issue.
+- When a branch name encodes an issue number, make sure the PR context or commit
+  messages reference that issue.
 - Use a plain reference like `#42` by default when the work is part of the
   issue but does not fully resolve it.
+- Let the PR creator decide whether to add a closing keyword such as
+  `Fixes #42` in the PR body when the PR fully resolves the issue.
 - Only use closing keywords when the merged change fully resolves the issue. If
   the issue is only partially addressed, reference it without auto-closing it.
 - Keep docs synchronized with workflow changes. If CI behavior or eval policy

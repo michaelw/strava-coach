@@ -38,8 +38,7 @@ Does not run:
 `Lint And Validate`:
 
 - validates PR issue references when the branch name carries an issue token such
-  as `issue-26`, including a `Fixes #<issue>` line in at least one non-merge
-  commit body
+  as `issue-26`
 - re-runs diff-scoped `pre-commit` on the PR diff
 - runs the full Hugo site build
 
@@ -122,9 +121,9 @@ gh workflow run prompt-eval.yml --ref main -f run_nightly_full=true
 Usually nothing beyond local `pre-commit`.
 
 If the branch name includes an issue token such as `issue-42`, make sure the PR
-title or body references that issue and at least one non-merge commit body
-contains `Fixes #42`. Use plain `#42` references elsewhere unless the commit
-body is the designated closing reference.
+title, PR body, or commit messages reference that issue. Use `Fixes #42` only
+when the PR truly resolves the issue on merge, and prefer putting that closing
+intent in the PR body so the PR creator makes that call explicitly.
 
 If you touched layouts, Hugo config, or rendering behavior, also run:
 
@@ -213,9 +212,12 @@ If you run `pre-commit run -a`, two prompt-validation hooks may both appear:
 When a PR branch name explicitly carries an issue number, for example
 `codex/implement-github-issue-26`, CI expects:
 
-- the PR title or body to reference `#26`
-- every non-merge commit in that PR to reference `#26`
+- the PR title, PR body, or commit messages in that PR to reference `#26`
 
 The guardrail accepts either a plain issue reference such as `#26` or a full
 issue URL. Prefer a plain reference unless the PR or commit should actually
 close the issue on merge.
+
+If the PR really should close the issue, the PR creator should add a closing
+keyword such as `Fixes #26` in the PR body. That choice is intentionally manual
+so branch naming and commit tooling do not accidentally close issues.

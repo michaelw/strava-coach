@@ -21,7 +21,8 @@ function parseArgs(argv) {
     const optionName = token.slice(2);
     const optionValue = argv[index + 1];
     if (!optionValue || optionValue.startsWith('--')) {
-      throw new Error(`Missing value for --${optionName}`);
+      options[optionName] = true;
+      continue;
     }
 
     options[optionName] = optionValue;
@@ -55,9 +56,8 @@ function buildIssueReferencePattern(issueNumber) {
   return new RegExp(`(?:#${issue}\\b|issues/${issue}\\b)`, 'i');
 }
 
-function buildFixesIssuePattern(issueNumber) {
-  const issue = escapeRegExp(String(issueNumber));
-  return new RegExp(`\\bfixes\\s+#${issue}\\b`, 'i');
+function runGit(args) {
+  return execFileSync('git', args, { encoding: 'utf8' }).trim();
 }
 
 function readPullRequestEvent(eventPath) {
@@ -98,12 +98,28 @@ function collectPullRequestCommits(baseSha, headSha) {
   return commits;
 }
 
-function messageContainsIssueReference(message, issueNumber) {
-  return buildIssueReferencePattern(issueNumber).test(message);
+function resolveCurrentBranchName() {
+  return runGit(['rev-parse', '--abbrev-ref', 'HEAD']);
 }
 
-function messageContainsFixesIssueReference(message, issueNumber) {
-  return buildFixesIssuePattern(issueNumber).test(message);
+function resolveDefaultBaseRef() {
+  try {
+    return runGit(['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD']);
+  } catch {
+    return 'origin/main';
+  }
+}
+
+function collectLocalBranchCommits(baseRef, headRef = 'HEAD') {
+  const mergeBase = runGit(['merge-base', baseRef, headRef]);
+  return {
+    mergeBase,
+    commits: collectPullRequestCommits(mergeBase, headRef),
+  };
+}
+
+function messageContainsIssueReference(message, issueNumber) {
+  return buildIssueReferencePattern(issueNumber).test(message);
 }
 
 function validateIssueReferences({ branchName, prTitle = '', prBody = '', commits = [] }) {
@@ -112,7 +128,6 @@ function validateIssueReferences({ branchName, prTitle = '', prBody = '', commit
     return {
       branchIssues,
       missingPrIssues: [],
-      missingFixesCommitBodyIssues: [],
       skipped: true,
     };
   }
@@ -122,14 +137,10 @@ function validateIssueReferences({ branchName, prTitle = '', prBody = '', commit
   const missingPrIssues = branchIssues.filter(
     (issueNumber) => !messageContainsIssueReference(prContext, issueNumber),
   );
-  const missingFixesCommitBodyIssues = branchIssues.filter(
-    (issueNumber) => !commits.some((commit) => messageContainsFixesIssueReference(commit.body || '', issueNumber)),
-  );
 
   return {
     branchIssues,
     missingPrIssues,
-    missingFixesCommitBodyIssues,
     skipped: false,
   };
 }
@@ -138,56 +149,102 @@ function formatIssueList(issueNumbers) {
   return issueNumbers.map((issueNumber) => `#${issueNumber}`).join(', ');
 }
 
+function buildFailureMessage({ branchName, expectedIssues, missingPrIssues }) {
+  const failures = [];
+
+  if (missingPrIssues.length > 0) {
+    failures.push(
+      `PR (title, body, or commits) must reference ${formatIssueList(missingPrIssues)} because branch "${branchName}" encodes ${expectedIssues}.`,
+    );
+  }
+
+  if (failures.length === 0) {
+    return '';
+  }
+
+  return [
+    'Issue reference validation failed.',
+    'Add a plain reference like "#<issue-ref>" in the PR title, PR body, or commit messages for each branch-encoded issue.',
+    ...failures,
+  ].join('\n\n');
+}
+
 function main() {
   const options = parseArgs(process.argv.slice(2));
   const eventPath = options['event-path'] || process.env.GITHUB_EVENT_PATH;
   const baseSha = options['base-sha'] || process.env.PR_BASE_SHA || process.env.GITHUB_BASE_SHA;
   const headSha = options['head-sha'] || process.env.PR_HEAD_SHA || process.env.GITHUB_HEAD_SHA;
 
-  if (!eventPath || !baseSha || !headSha) {
-    console.log('Skipping issue reference validation because PR event context is incomplete.');
+  if (eventPath && baseSha && headSha) {
+    const pullRequest = readPullRequestEvent(eventPath);
+    const branchName = pullRequest.head?.ref || '';
+    const commits = collectPullRequestCommits(baseSha, headSha);
+    const result = validateIssueReferences({
+      branchName,
+      prTitle: pullRequest.title || '',
+      prBody: pullRequest.body || '',
+      commits,
+    });
+
+    if (result.skipped) {
+      console.log(`Skipping issue reference validation for branch "${branchName}" because it does not encode an issue number.`);
+      return;
+    }
+
+    const expectedIssues = formatIssueList(result.branchIssues);
+    const failureMessage = buildFailureMessage({
+      branchName,
+      expectedIssues,
+      missingPrIssues: result.missingPrIssues,
+    });
+
+    if (failureMessage) {
+      throw new Error(failureMessage);
+    }
+
+    console.log(`Issue reference validation passed for ${expectedIssues} on branch "${branchName}".`);
     return;
   }
 
-  const pullRequest = readPullRequestEvent(eventPath);
-  const branchName = pullRequest.head?.ref || '';
-  const commits = collectPullRequestCommits(baseSha, headSha);
+  const branchName = options['branch-name'] || resolveCurrentBranchName();
+  if (!branchName || branchName === 'HEAD') {
+    console.log('Skipping local issue reference validation because the current checkout is detached.');
+    return;
+  }
+
+  const baseRef = options['base-ref'] || resolveDefaultBaseRef();
+  const headRef = options['head-ref'] || 'HEAD';
+  const { mergeBase, commits } = collectLocalBranchCommits(baseRef, headRef);
   const result = validateIssueReferences({
     branchName,
-    prTitle: pullRequest.title || '',
-    prBody: pullRequest.body || '',
+    prTitle: options['pr-title'] === true ? '' : (options['pr-title'] || ''),
+    prBody: options['pr-body'] === true ? '' : (options['pr-body'] || ''),
     commits,
   });
 
   if (result.skipped) {
-    console.log(`Skipping issue reference validation for branch "${branchName}" because it does not encode an issue number.`);
+    console.log(`Skipping local issue reference validation for branch "${branchName}" because it does not encode an issue number.`);
     return;
   }
 
   const expectedIssues = formatIssueList(result.branchIssues);
-  const failures = [];
+  const failureMessage = buildFailureMessage({
+    branchName,
+    expectedIssues,
+    missingPrIssues: result.missingPrIssues,
+  });
 
-  if (result.missingPrIssues.length > 0) {
-    failures.push(
-      `PR (title, body, or commits) must reference ${formatIssueList(result.missingPrIssues)} because branch "${branchName}" encodes ${expectedIssues}.`,
-    );
-  }
-
-  if (result.missingFixesCommitBodyIssues.length > 0) {
-    failures.push(
-      `At least one non-merge commit body must contain ${result.missingFixesCommitBodyIssues.map((issueNumber) => `Fixes #${issueNumber}`).join(', ')} because branch "${branchName}" encodes ${expectedIssues}.`,
-    );
-  }
-
-  if (failures.length > 0) {
+  if (failureMessage) {
     throw new Error([
-      'Issue reference validation failed.',
-      'Add a plain reference like "#<issue-ref>" in the PR context and include `Fixes #<issue-ref>` in the body of at least one non-merge commit for each branch-encoded issue.',
-      ...failures,
+      failureMessage,
+      `Local mode compared non-merge commits in ${mergeBase}..${headRef} against ${baseRef}.`,
+      'CI can also be satisfied by adding the issue reference in the eventual PR title or PR body.',
     ].join('\n\n'));
   }
 
-  console.log(`Issue reference validation passed for ${expectedIssues} on branch "${branchName}".`);
+  console.log(
+    `Local issue reference validation passed for ${expectedIssues} on branch "${branchName}" against ${baseRef} (${mergeBase}..${headRef}).`,
+  );
 }
 
 if (require.main === module) {
@@ -202,10 +259,14 @@ if (require.main === module) {
 module.exports = {
   buildIssueReferencePattern,
   collectPullRequestCommits,
+  collectLocalBranchCommits,
   extractBranchIssueNumbers,
-  messageContainsFixesIssueReference,
+  formatIssueList,
   messageContainsIssueReference,
   parseArgs,
   readPullRequestEvent,
+  resolveCurrentBranchName,
+  resolveDefaultBaseRef,
+  runGit,
   validateIssueReferences,
 };
