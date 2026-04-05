@@ -18,6 +18,21 @@
       extractVersionTemplate: '^prompt-baseline-v(?<version>.*)$',
       versioningTemplate: 'semver',
     },
+    {
+      customType: 'regex',
+      description:
+        'Update pinned tool versions annotated with renovate comments. ' +
+        'Add a "# renovate: datasource=... depName=... extractVersion=..." comment ' +
+        'above any UPPERCASE_TOOL_VERSION variable to have it tracked here.',
+      managerFilePatterns: [
+        '/^scripts\\/devcontainer-post-create\\.sh$/',
+        '/^\\.github\\/workflows\\/ci\\.yml$/',
+      ],
+      matchStrings: [
+        '\\s*# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)(?: extractVersion=(?<extractVersion>[^\\s]+))?\\n\\s*[A-Z_]+_VERSION(?:=|: )"?(?<currentValue>[\\d.]+)"?',
+      ],
+      versioningTemplate: 'semver',
+    },
   ],
   packageRules: [
     {
@@ -34,8 +49,15 @@
     },
     {
       matchManagers: ['custom.regex'],
+      matchPackageNames: ['michaelw/strava-coach'],
       commitMessageTopic: 'prompt baseline release',
       groupName: 'prompt baseline release',
+    },
+    {
+      matchManagers: ['custom.regex'],
+      excludePackageNames: ['michaelw/strava-coach'],
+      groupName: 'pinned tool versions',
+      commitMessageTopic: 'tool version',
     },
   ],
 }

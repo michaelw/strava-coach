@@ -94,6 +94,21 @@ This repository is intended to use the hosted Renovate GitHub App with
 [`renovate.json5`](../renovate.json5), not a self-hosted Renovate Actions
 workflow.
 
+Renovate tracks the following pins and opens update PRs when new releases are
+published:
+
+- **Hugo** (`HUGO_VERSION`) — in `scripts/devcontainer-post-create.sh` and
+  `.github/workflows/ci.yml` via the `pinned tool versions` custom regex manager.
+- **Task** (`TASK_VERSION`) — in `scripts/devcontainer-post-create.sh` via the
+  `pinned tool versions` custom regex manager; the `go-task/setup-task` action
+  pin in `.github/workflows/ci.yml` is also tracked via the standard
+  `github-actions` manager.
+- **Prompt baseline** — `evals/config.yaml` via the `prompt baseline release`
+  custom regex manager.
+
+Each Renovate PR follows the normal PR validation flow before the pin change
+is merged.
+
 ### Nightly And Manual Hosted Runs
 
 Nightly is the anti-drift backstop.
