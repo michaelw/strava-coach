@@ -75,6 +75,11 @@ tasks:
     cmds:
       - pre-commit run --from-ref "${PRE_COMMIT_FROM_REF}" --to-ref "${PRE_COMMIT_TO_REF}"
 
+  renovate:validate:
+    desc: Validate the Renovate configuration
+    cmds:
+      - PRE_COMMIT_HOME="${PRE_COMMIT_HOME:-${TMPDIR:-/tmp}/strava-coach-pre-commit}" pre-commit run check-renovate --files renovate.json5
+
   ci:repo:
     desc: Run repo-wide non-hosted CI checks
     cmds:

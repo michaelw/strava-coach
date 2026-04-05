@@ -80,6 +80,12 @@ Run pre-commit on all tracked files:
 task lint:all
 ```
 
+Validate the Renovate config directly:
+
+```bash
+task renovate:validate
+```
+
 Build the production-like Hugo site:
 
 ```bash
@@ -136,7 +142,7 @@ task check
 The `pre-commit` hook validates changed case files, but `task check` gives you
 the same prompt-domain backstop CI uses.
 
-### Workflow, Taskfile, schema, fixture, or validation-plumbing changes
+### Workflow, Taskfile, Renovate config, schema, fixture, or validation-plumbing changes
 
 Run:
 

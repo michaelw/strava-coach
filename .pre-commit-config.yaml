@@ -34,7 +34,11 @@ repos:
     rev: 0.33.2
     hooks:
       - id: check-github-workflows
-
+      - id: check-renovate
+        name: Validate Renovate config
+        files: ^renovate\.json5$
+        additional_dependencies:
+          - pyjson5
   - repo: local
     hooks:
       - id: validate-changed-case-yaml-files

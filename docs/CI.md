@@ -24,6 +24,7 @@ Runs only on staged files.
 Typical checks:
 
 - Markdown, YAML, JSON, and workflow syntax/hygiene
+- Renovate config validation when [`renovate.json5`](../renovate.json5) changes
 - changed case YAML validation for `evals/cases/**/*.yaml`
 - full-tree case validation when validator/schema/fixture plumbing changes
 
@@ -40,6 +41,7 @@ Does not run:
 - validates PR issue references when the branch name carries an issue token such
   as `issue-26`
 - re-runs diff-scoped `pre-commit` on the PR diff
+- validates [`renovate.json5`](../renovate.json5) with the pre-commit Renovate schema hook
 - runs the full Hugo site build
 
 `Prompt Eval Gate`:
@@ -70,6 +72,7 @@ Fork or docs-only PRs:
 `Lint And Validate`:
 
 - full-repo `pre-commit`
+- Renovate config validation via the pre-commit schema hook
 - full Hugo site build
 
 Prompt-related pushes also run:
@@ -249,6 +252,9 @@ If you run `pre-commit run -a`, two prompt-validation hooks may both appear:
 - `Validate changed case YAML files` routes changed filenames through `task eval:validate --`
 - `Validate full case tree after validator/schema/fixture changes` is the
   global backstop that exists for validation-plumbing edits
+
+If [`renovate.json5`](../renovate.json5) is staged, `Validate Renovate config`
+runs `task renovate:validate` so schema and parser errors fail before push.
 
 ## Issue Reference Guardrail
 
