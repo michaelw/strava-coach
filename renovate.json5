@@ -20,15 +20,17 @@
     },
     {
       customType: 'regex',
-      description: 'Update pinned Hugo version in devcontainer bootstrap and CI',
+      description:
+        'Update pinned tool versions annotated with renovate comments. ' +
+        'Add a "# renovate: datasource=... depName=... extractVersion=..." comment ' +
+        'above any TOOLNAME_VERSION variable to have it tracked here.',
       managerFilePatterns: [
         '/^scripts\\/devcontainer-post-create\\.sh$/',
         '/^\\.github\\/workflows\\/ci\\.yml$/',
       ],
-      matchStrings: ['HUGO_VERSION(?:=|: )"?(?<currentValue>[\\d.]+)"?'],
-      depNameTemplate: 'gohugoio/hugo',
-      datasourceTemplate: 'github-releases',
-      extractVersionTemplate: '^v(?<version>.*)$',
+      matchStrings: [
+        '\\s*# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)(?: extractVersion=(?<extractVersion>[^\\s]+))?\\n\\s*[A-Z_]+_VERSION(?:=|: )"?(?<currentValue>[\\d.]+)"?',
+      ],
       versioningTemplate: 'semver',
     },
   ],
