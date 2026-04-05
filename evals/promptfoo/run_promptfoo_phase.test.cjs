@@ -237,6 +237,29 @@ test('helper retries flaky compare failures only for tagged compare cases', () =
   assert.equal(invocations[1][invocations[1].indexOf('-o') + 1], path.join(outputDir, 'compare.retry-flaky.1.json'));
 });
 
+test('compare phase materializes an expanded config with explicit repeated tests before invoking promptfoo', () => {
+  const { result, invocations } = runHelper(
+    [SCRIPT_PATH, 'evals/promptfoo/promptfooconfig.compare.yaml'],
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  const generatedConfigPath = invocations[0][invocations[0].indexOf('-c') + 1];
+  assert.match(generatedConfigPath, /compare\.config\.expanded\.yaml$/);
+
+  const generatedConfig = JSON.parse(
+    JSON.stringify(require('js-yaml').load(fs.readFileSync(generatedConfigPath, 'utf8'))),
+  );
+  assert.equal(generatedConfig.tests.length, 8);
+  assert.equal(
+    generatedConfig.tests.filter((entry) => entry.endsWith('/evals/cases/compare/personalization/personalization-001.yaml')).length,
+    5,
+  );
+  assert.equal(
+    generatedConfig.tests.filter((entry) => entry.endsWith('/evals/cases/compare/personalization/personalization-003.yaml')).length,
+    3,
+  );
+});
+
 test('compare phase resolves a baseline prompt path before invoking promptfoo', () => {
   const { result, invocations, resolvedBaselinePaths } = runHelper(
     [SCRIPT_PATH, 'evals/promptfoo/promptfooconfig.compare.yaml'],

@@ -84,6 +84,7 @@ PROMPTFOO_CONFIG_DIR="${PROMPTFOO_CONFIG_DIR:-$ROOT_DIR/.promptfoo}"
 PROMPTFOO_DISABLE_WAL_MODE="${PROMPTFOO_DISABLE_WAL_MODE:-true}"
 PROMPTFOO_BIN="${PROMPTFOO_BIN:-$ROOT_DIR/node_modules/.bin/promptfoo}"
 BASELINE_CACHE_DIR="$PROMPTFOO_CONFIG_DIR/baselines"
+RUN_CONFIG_PATH="$RESOLVED_CONFIG_PATH"
 IFS='	' read -r DEFAULT_RETRY_ERRORS_PASSES DEFAULT_RETRY_FLAKY_PASSES DEFAULT_FLAKY_TAG <<EOF
 $(node -e "
   const { readRetryPolicy } = require('$ROOT_DIR/evals/promptfoo/config.cjs');
@@ -104,6 +105,11 @@ if [ "$PHASE_NAME" = "compare" ]; then
       --repo-config "$REPO_CONFIG_PATH"
   )"
   export STRAVA_COACH_RESOLVED_BASELINE_PROMPT_PATH
+  RUN_CONFIG_PATH="$OUTPUT_DIR/$OUTPUT_PREFIX.config.expanded.yaml"
+  node -e "
+    const { writeExpandedCompareConfig } = require('$ROOT_DIR/evals/promptfoo/config.cjs');
+    writeExpandedCompareConfig('$RESOLVED_CONFIG_PATH', '$RUN_CONFIG_PATH');
+  "
 fi
 
 run_promptfoo_eval() {
@@ -112,7 +118,7 @@ run_promptfoo_eval() {
   PROMPTFOO_CONFIG_DIR="$PROMPTFOO_CONFIG_DIR" \
   PROMPTFOO_DISABLE_WAL_MODE="$PROMPTFOO_DISABLE_WAL_MODE" \
   "$PROMPTFOO_BIN" eval \
-    -c "$RESOLVED_CONFIG_PATH" \
+    -c "$RUN_CONFIG_PATH" \
     --no-cache \
     -o "$OUTPUT_PATH" \
     "$@" || true
