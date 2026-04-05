@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
   extractBranchIssueNumbers,
+  messageContainsFixesIssueReference,
   messageContainsIssueReference,
   validateIssueReferences,
 } = require('./validate_issue_references.cjs');
@@ -41,6 +42,13 @@ test('messageContainsIssueReference accepts issue shorthand and issue urls', () 
   assert.equal(messageContainsIssueReference('Mentions #260 instead', 26), false);
 });
 
+test('messageContainsFixesIssueReference requires a Fixes issue reference', () => {
+  assert.equal(messageContainsFixesIssueReference('Fixes #26', 26), true);
+  assert.equal(messageContainsFixesIssueReference('fixes #26 after the refactor', 26), true);
+  assert.equal(messageContainsFixesIssueReference('Closes #26', 26), false);
+  assert.equal(messageContainsFixesIssueReference('Related to #26', 26), false);
+});
+
 test('validateIssueReferences skips branches without explicit issue tokens', () => {
   const result = validateIssueReferences({
     branchName: 'docs/update-homepage',
@@ -76,20 +84,20 @@ test('validateIssueReferences fails when issue is missing from entire PR', () =>
 
   assert.deepEqual(result.branchIssues, [26]);
   assert.deepEqual(result.missingPrIssues, [26]);
-  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.deepEqual(result.missingFixesCommitBodyIssues, [26]);
 });
 
-test('validateIssueReferences passes when only one commit references the branch issue', () => {
+test('validateIssueReferences fails when PR references the issue without a Fixes commit body', () => {
   const result = validateIssueReferences({
     branchName: 'codex/implement-github-issue-26',
-    prTitle: 'Improve CI guardrails',
+    prTitle: 'Improve CI guardrails (#26)',
     prBody: 'Adds a PR template.',
     commits: [
       {
         sha: 'abc1234',
-        subject: 'ci: add issue reference validator',
+        subject: 'ci: add issue reference validator (#26)',
         body: '',
-        message: 'ci: add issue reference validator',
+        message: 'ci: add issue reference validator (#26)',
       },
       {
         sha: 'def5678',
@@ -101,11 +109,37 @@ test('validateIssueReferences passes when only one commit references the branch 
   });
 
   assert.deepEqual(result.missingPrIssues, []);
-  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.deepEqual(result.missingFixesCommitBodyIssues, [26]);
   assert.equal(result.skipped, false);
 });
 
-test('validateIssueReferences passes when only the PR title/body references the branch issue', () => {
+test('validateIssueReferences passes when one commit body contains Fixes for the branch issue', () => {
+  const result = validateIssueReferences({
+    branchName: 'codex/implement-github-issue-26',
+    prTitle: 'Improve CI guardrails',
+    prBody: 'Adds a PR template.',
+    commits: [
+      {
+        sha: 'abc1234',
+        subject: 'ci: add issue reference validator',
+        body: 'Fixes #26',
+        message: 'ci: add issue reference validator\n\nFixes #26',
+      },
+      {
+        sha: 'def5678',
+        subject: 'docs: explain issue reference enforcement',
+        body: '',
+        message: 'docs: explain issue reference enforcement',
+      },
+    ],
+  });
+
+  assert.deepEqual(result.missingPrIssues, []);
+  assert.deepEqual(result.missingFixesCommitBodyIssues, []);
+  assert.equal(result.skipped, false);
+});
+
+test('validateIssueReferences fails when only the PR title/body references the branch issue', () => {
   const result = validateIssueReferences({
     branchName: 'codex/implement-github-issue-26',
     prTitle: 'ci: enforce issue references in PRs and commits (#26)',
@@ -121,7 +155,7 @@ test('validateIssueReferences passes when only the PR title/body references the 
   });
 
   assert.deepEqual(result.missingPrIssues, []);
-  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.deepEqual(result.missingFixesCommitBodyIssues, [26]);
   assert.equal(result.skipped, false);
 });
 
@@ -134,8 +168,8 @@ test('validateIssueReferences passes when PR context and all commits reference t
       {
         sha: 'abc1234',
         subject: 'ci: validate PR issue refs (#26)',
-        body: '',
-        message: 'ci: validate PR issue refs (#26)',
+        body: 'Fixes #26',
+        message: 'ci: validate PR issue refs (#26)\n\nFixes #26',
       },
       {
         sha: 'def5678',
@@ -147,6 +181,6 @@ test('validateIssueReferences passes when PR context and all commits reference t
   });
 
   assert.deepEqual(result.missingPrIssues, []);
-  assert.deepEqual(result.commitsMissingIssues, []);
+  assert.deepEqual(result.missingFixesCommitBodyIssues, []);
   assert.equal(result.skipped, false);
 });
