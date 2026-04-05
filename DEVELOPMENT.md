@@ -20,6 +20,13 @@ Open the repo in the devcontainer and let the post-create step finish. It runs
 [`scripts/devcontainer-post-create.sh`](./scripts/devcontainer-post-create.sh),
 which installs Task, Hugo, `pre-commit`, `ripgrep`, and repo dependencies.
 
+### Codex
+
+The Codex cloud environment automatically runs
+[`scripts/devcontainer-post-create.sh`](./scripts/devcontainer-post-create.sh)
+during setup, so tools are bootstrapped in the same way as the devcontainer.
+No extra steps are needed.
+
 ### Local Host
 
 Install the prerequisites, then run:

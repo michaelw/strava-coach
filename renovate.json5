@@ -18,6 +18,19 @@
       extractVersionTemplate: '^prompt-baseline-v(?<version>.*)$',
       versioningTemplate: 'semver',
     },
+    {
+      customType: 'regex',
+      description: 'Update pinned Hugo version in devcontainer bootstrap and CI',
+      managerFilePatterns: [
+        '/^scripts\\/devcontainer-post-create\\.sh$/',
+        '/^\\.github\\/workflows\\/ci\\.yml$/',
+      ],
+      matchStrings: ['HUGO_VERSION[=: ]+"?(?<currentValue>[\\d.]+)"?'],
+      depNameTemplate: 'gohugoio/hugo',
+      datasourceTemplate: 'github-releases',
+      extractVersionTemplate: '^v(?<version>.*)$',
+      versioningTemplate: 'semver',
+    },
   ],
   packageRules: [
     {
@@ -34,8 +47,15 @@
     },
     {
       matchManagers: ['custom.regex'],
+      matchPackageNames: ['michaelw/strava-coach'],
       commitMessageTopic: 'prompt baseline release',
       groupName: 'prompt baseline release',
+    },
+    {
+      matchManagers: ['custom.regex'],
+      matchPackageNames: ['gohugoio/hugo'],
+      groupName: 'hugo pin',
+      commitMessageTopic: 'Hugo version',
     },
   ],
 }
