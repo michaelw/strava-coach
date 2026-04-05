@@ -604,20 +604,6 @@ components:
           type: boolean
         max:
           type: integer
-    TimedZoneDistribution:
-      type: array
-      items:
-        type: object
-        properties:
-          min:
-            type: integer
-            description: The lower bound of the zone range.
-          max:
-            type: integer
-            description: The upper bound of the zone range.
-          time:
-            type: integer
-            description: The number of seconds spent in the zone range.
     SummaryAthlete:
       allOf:
         - $ref: '#/components/schemas/MetaAthlete'
@@ -1328,3 +1314,17 @@ components:
         effort_count:
           type: integer
           description: Number of efforts by the authenticated athlete on this segment.
+    TimedZoneDistribution:
+      type: array
+      items:
+        type: object
+        properties:
+          min:
+            type: integer
+            description: The lower bound of the zone range.
+          max:
+            type: integer
+            description: The upper bound of the zone range.
+          time:
+            type: integer
+            description: The number of seconds spent in the zone range.

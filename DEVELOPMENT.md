@@ -67,7 +67,8 @@ Fast non-hosted prompt-domain checks:
 task check
 ```
 
-Regenerate the local Strava OpenAPI subset from Strava's published Swagger:
+Regenerate the local Strava OpenAPI subset from Strava's published Swagger and
+reapply the local OpenAI action importer compatibility transforms:
 
 ```bash
 task openapi:sync
@@ -143,7 +144,8 @@ Run:
 task verify
 ```
 
-If you are updating the Strava action schema to track the published API,
+If you are updating the Strava action schema to track the published API or the
+local importer-compatibility layer,
 regenerate it first:
 
 ```bash

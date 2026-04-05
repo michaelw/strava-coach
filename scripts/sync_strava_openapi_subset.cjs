@@ -28,6 +28,30 @@ const SECURITY_BY_PATH = {
   '/activities/{id}/zones': [['activity:read'], ['activity:read_all']],
 };
 
+const LOCAL_ACTIVITY_DESCRIPTION =
+  'Returns the given activity that is owned by the authenticated athlete. Requires activity:read for Everyone and Followers activities and activity:read_all for Only Me activities.';
+
+const TIMED_ZONE_DISTRIBUTION_SCHEMA = {
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      min: {
+        type: 'integer',
+        description: 'The lower bound of the zone range.',
+      },
+      max: {
+        type: 'integer',
+        description: 'The upper bound of the zone range.',
+      },
+      time: {
+        type: 'integer',
+        description: 'The number of seconds spent in the zone range.',
+      },
+    },
+  },
+};
+
 async function fetchJson(url) {
   const response = await fetch(url);
   const text = await response.text();
@@ -247,6 +271,13 @@ function convertSecurityScheme(swagger) {
 }
 
 function applyLocalExtensions(spec) {
+  spec.openapi = '3.1.0';
+  spec.paths['/activities/{id}'].get.description = LOCAL_ACTIVITY_DESCRIPTION;
+  spec.components.schemas.ActivityZone.properties.distribution_buckets = {
+    $ref: '#/components/schemas/TimedZoneDistribution',
+  };
+  spec.components.schemas.TimedZoneDistribution = clone(TIMED_ZONE_DISTRIBUTION_SCHEMA);
+
   const streamParams = spec.paths['/activities/{id}/streams'].get.parameters;
   streamParams.push({
     name: 'resolution',
