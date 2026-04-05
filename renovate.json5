@@ -7,7 +7,7 @@
     {
       customType: 'regex',
       description: 'Update the pinned compare baseline release in evals/config.yaml',
-      managerFilePatterns: ['/^evals\\/config\\.yaml$/'],
+      fileMatch: ['^evals/config\\.yaml$'],
       matchStrings: [
         'baseline:\\s*\\n(?<indentation>[ \\t]*)version:\\s(?<currentValue>\\d+\\.\\d+\\.\\d+)\\s*\\n[ \\t]*url:\\shttps://github\\.com/michaelw/strava-coach/releases/download/prompt-baseline-v\\d+\\.\\d+\\.\\d+/strava-coach-system-prompt\\.md',
       ],
@@ -21,12 +21,10 @@
     {
       customType: 'regex',
       description:
-        'Update pinned tool versions annotated with renovate comments. ' +
-        'Add a "# renovate: datasource=... depName=... extractVersion=..." comment ' +
-        'above any UPPERCASE_TOOL_VERSION variable to have it tracked here.',
-      managerFilePatterns: [
-        '/^scripts\\/devcontainer-post-create\\.sh$/',
-        '/^\\.github\\/workflows\\/ci\\.yml$/',
+        'Update pinned tool versions annotated with renovate comments. Add a "# renovate: datasource=... depName=... extractVersion=..." comment above any UPPERCASE_TOOL_VERSION variable to have it tracked here.',
+      fileMatch: [
+        '^scripts/devcontainer-post-create\\.sh$',
+        '^\\.github/workflows/ci\\.yml$',
       ],
       matchStrings: [
         '\\s*# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)(?: extractVersion=(?<extractVersion>[^\\s]+))?\\n\\s*[A-Z_]+_VERSION(?:=|: )"?(?<currentValue>[\\d.]+)"?',
