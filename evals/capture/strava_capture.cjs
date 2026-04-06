@@ -50,8 +50,7 @@ function usage() {
     '  STRAVA_ACCESS_TOKEN             Optional override for live API capture.',
     '',
     'Interactive auth reminder:',
-    '  Before running auth, set the Strava App Authorization Callback Domain to localhost.',
-    '  After finishing local auth for testing, set it back to chat.openai.com for the Custom GPT integration.',
+    '  auth listens on a random localhost callback port and does not require changing the Strava App callback setting first.',
     '',
     'Examples:',
     '  node evals/capture/strava_capture.cjs auth',
@@ -193,8 +192,7 @@ function tryOpenBrowser(url) {
 function buildInteractiveAuthMessage(redirectUri) {
   return [
     'Local Strava OAuth flow starting.',
-    'Before continuing, set the Strava App Authorization Callback Domain to localhost.',
-    'After this local test flow succeeds, change the callback domain back to chat.openai.com for the Custom GPT integration.',
+    'No Strava App callback setting change is required for this local auth flow.',
     `Listening for the OAuth callback at: ${redirectUri}`,
   ].join('\n');
 }
@@ -216,7 +214,6 @@ function buildCallbackHtml({ success, message }) {
     <main>
       <h1>${title}</h1>
       <p>${message}</p>
-      <p>After local testing, remember to set the Strava App callback domain back to <code>chat.openai.com</code> for the Custom GPT integration.</p>
       <p>You can close this tab now.</p>
     </main>
   </body>

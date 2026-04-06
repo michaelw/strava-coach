@@ -470,11 +470,17 @@ Required environment for live capture only:
 Typical flow:
 
 ```bash
-task capture:strava:auth-url
-task capture:strava:exchange-code -- --code "<code-from-redirect>"
+task capture:strava:auth
 task capture:strava:capture
 task capture:strava:capture -- --label "private-notes" --activity-id "123456789"
 task capture:promote -- --kind "strava" --source ".promptfoo/captures/raw/strava/private-notes-<timestamp>.json" --id "private-notes-run"
+```
+
+Manual fallback if browser auto-open or the localhost callback flow is blocked:
+
+```bash
+task capture:strava:auth-url
+task capture:strava:exchange-code -- --code "<code-from-redirect>"
 ```
 
 ### GPT capture

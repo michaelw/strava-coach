@@ -254,9 +254,8 @@ task capture:gpt -- --scenario <scenario>
 task capture:promote -- --kind <kind> --source <raw.json> --id <fixture-id>
 ```
 
-Before running `task capture:strava:auth`, set the Strava App Authorization
-Callback Domain to `localhost`. After the local auth flow finishes, switch the
-callback domain back to `chat.openai.com` for the Custom GPT integration.
+`task capture:strava:auth` starts a localhost callback server automatically and
+does not require changing the Strava App Authorization Callback Domain first.
 
 Manual fallback if browser auto-open or the localhost callback flow is blocked:
 
