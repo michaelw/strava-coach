@@ -118,7 +118,17 @@ Notes:
 Publishing `prompt-baseline-v<semver>` does not change the compare baseline pin
 directly. Instead:
 
-- `baseline-prompt-release.yml` publishes the immutable release artifact
+- `baseline-prompt-release.yml` is the supported publisher for baseline releases
+- maintainers may use either workflow dispatch or a pushed
+  `prompt-baseline-v<semver>` tag; both paths feed the same publish routine
+- the workflow creates a draft release, uploads `system_prompt.md` as
+  `strava-coach-system-prompt.md`, and only then publishes the release
+- the shared publish routine now runs inside pinned
+  `actions/github-script`, not a repo helper script
+- reruns may resume an existing draft release, but a published release is
+  treated as immutable and must not be repaired in place
+- publishing a baseline release from the GitHub Releases UI is unsupported and
+  is flagged by `baseline-prompt-release-guard.yml`
 - Renovate detects that release and opens a PR updating
   [`evals/config.yaml`](../evals/config.yaml)
 - the generated PR reuses the normal PR validation flow before the new baseline

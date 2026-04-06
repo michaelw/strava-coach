@@ -1,0 +1,22 @@
+name: Guard Baseline Prompt Releases
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    if: startsWith(github.event.release.tag_name, 'prompt-baseline-v') && github.event.sender.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Reject unsupported published baseline release
+        run: |
+          echo "Baseline prompt releases must be published by baseline-prompt-release.yml." >&2
+          echo "Use the workflow dispatch entrypoint or push a prompt-baseline-v<semver> tag." >&2
+          echo "Publishing a baseline release from the GitHub Releases UI is unsupported, even though the release is already published." >&2
+          exit 1
