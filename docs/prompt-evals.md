@@ -339,7 +339,11 @@ evals. Instead:
 Successful baseline releases are published through
 [`baseline-prompt-release.yml`](../.github/workflows/baseline-prompt-release.yml).
 Normal semver tags like `prompt-baseline-v1.1.0` publish `system_prompt.md` as
-the asset `strava-coach-system-prompt.md`.
+the asset `strava-coach-system-prompt.md`. The publisher creates a draft
+release first, uploads the asset, and publishes only after the draft is
+complete. The shared publisher runs inside the workflow via a pinned
+`actions/github-script` step. Published releases are treated as immutable and
+are not repaired in place.
 
 After a new semver baseline release is published, Renovate uses
 [`renovate.json5`](../renovate.json5) to detect that release and
@@ -375,11 +379,20 @@ Current pinned baseline:
 
 Future releases:
 
-1. Publish a new `prompt-baseline-v<semver>` release from `system_prompt.md`.
-2. Let Renovate open the PR that updates
+1. Publish a new `prompt-baseline-v<semver>` release from `system_prompt.md`
+   via the `Publish Baseline Prompt Release` workflow or by pushing the matching
+   tag.
+2. If you use workflow dispatch, you may optionally provide `target_ref`; when
+   omitted, the workflow releases the current default branch tip.
+3. The publisher creates a draft release first, uploads
+   `strava-coach-system-prompt.md`, and publishes only after the asset is
+   attached.
+4. Baseline releases published from the GitHub Releases UI are unsupported and
+   intentionally fail the guard workflow.
+5. Let Renovate open the PR that updates
    [`evals/config.yaml`](../evals/config.yaml) to that release.
-3. Review the generated PR and let the existing CI validate the updated pin.
-4. If Renovate has not opened the PR yet, check that the Renovate GitHub App is
+6. Review the generated PR and let the existing CI validate the updated pin.
+7. If Renovate has not opened the PR yet, check that the Renovate GitHub App is
    installed for this repository and that it has processed the new release.
 
 CI may produce additional per-suite files such as `self.smoke.json` or

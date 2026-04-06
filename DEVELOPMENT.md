@@ -216,7 +216,10 @@ Publish a semver baseline release artifact:
 
 - use the `Publish Baseline Prompt Release` workflow on GitHub, or push a tag
   like `prompt-baseline-v1.1.0`
-- the workflow publishes `system_prompt.md` by default
+- workflow dispatch can target any git ref or commit SHA; leaving `target_ref`
+  blank uses the current default branch tip
+- do not publish baseline releases from the GitHub Releases UI; a guard workflow
+  treats that path as unsupported
 - the initial release `prompt-baseline-v1.0.0` already exists and serves as the
   current pinned baseline artifact
 

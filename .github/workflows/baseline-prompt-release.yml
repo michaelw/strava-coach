@@ -10,11 +10,14 @@ on:
         description: "Semver version to publish, for example 1.1.0"
         required: true
         type: string
-      source_path:
-        description: "Repo-relative prompt source path. Defaults to system_prompt.md."
+      target_ref:
+        description: "Git ref or commit SHA to release. Defaults to the default branch tip."
         required: false
-        default: "system_prompt.md"
         type: string
+
+concurrency:
+  group: baseline-prompt-release-${{ github.event_name == 'push' && github.ref_name || format('prompt-baseline-v{0}', github.event.inputs.version) }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -32,79 +35,145 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve release inputs
-        id: release
-        run: |
-          set -eu
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-            TAG="prompt-baseline-v$VERSION"
-            SOURCE_PATH="${{ github.event.inputs.source_path }}"
-            if [ -z "$SOURCE_PATH" ]; then
-              SOURCE_PATH="system_prompt.md"
-            fi
-          else
-            TAG="${GITHUB_REF_NAME}"
-            VERSION="${TAG#prompt-baseline-v}"
-            SOURCE_PATH="system_prompt.md"
-          fi
-
-          case "$TAG" in
-            prompt-baseline-v[0-9]*.[0-9]*.[0-9]*)
-              ;;
-            *)
-              echo "Unsupported baseline prompt tag: $TAG" >&2
-              exit 1
-              ;;
-          esac
-
-          if [ ! -f "$SOURCE_PATH" ]; then
-            echo "Prompt baseline source file not found: $SOURCE_PATH" >&2
-            exit 1
-          fi
-
-          ASSET_NAME="strava-coach-system-prompt.md"
-          ASSET_PATH="$RUNNER_TEMP/$ASSET_NAME"
-          cp "$SOURCE_PATH" "$ASSET_PATH"
-          SHA256="$(shasum -a 256 "$ASSET_PATH" | awk '{print $1}')"
-
-          {
-            echo "tag=$TAG"
-            echo "version=$VERSION"
-            echo "source_path=$SOURCE_PATH"
-            echo "asset_name=$ASSET_NAME"
-            echo "asset_path=$ASSET_PATH"
-            echo "sha256=$SHA256"
-            echo "download_url=https://github.com/${{ github.repository }}/releases/download/$TAG/$ASSET_NAME"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Publish GitHub release asset
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -eu
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          INPUT_TARGET_REF: ${{ github.event.inputs.target_ref }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        with:
+          script: |
+            const crypto = require('crypto');
+            const fs = require('fs');
+            const { execFileSync } = require('child_process');
 
-          NOTES_FILE="$(mktemp)"
-          cat >"$NOTES_FILE" <<EOF
-          Baseline prompt artifact for compare evals.
+            const sourcePath = 'system_prompt.md';
+            const assetName = 'strava-coach-system-prompt.md';
 
-          - Version: ${{ steps.release.outputs.version }}
-          - Source Path: ${{ steps.release.outputs.source_path }}
-          - Commit: ${{ github.sha }}
-          - SHA256: ${{ steps.release.outputs.sha256 }}
-          - Download URL: ${{ steps.release.outputs.download_url }}
-          EOF
+            function resolveTargetSha(ref) {
+              return execFileSync('git', ['rev-parse', `${ref}^{commit}`], { encoding: 'utf8' }).trim();
+            }
 
-          if gh release view "${{ steps.release.outputs.tag }}" >/dev/null 2>&1; then
-            echo "Baseline release ${{ steps.release.outputs.tag }} already exists." >&2
-            echo "Pinned baseline artifacts must stay immutable; publish a new semver tag instead of replacing an existing release asset." >&2
-            exit 1
-          fi
+            let tag;
+            let version;
+            let targetRef;
+            let targetSha;
 
-          gh release create "${{ steps.release.outputs.tag }}" \
-            "${{ steps.release.outputs.asset_path }}#${{ steps.release.outputs.asset_name }}" \
-            --title "Prompt Baseline ${{ steps.release.outputs.version }}" \
-            --notes-file "$NOTES_FILE" \
-            --target "${{ github.sha }}" \
-            --latest=false
+            if (context.eventName === 'workflow_dispatch') {
+              version = process.env.INPUT_VERSION;
+              if (!version) {
+                core.setFailed('workflow_dispatch baseline releases require a version input');
+                return;
+              }
+              tag = `prompt-baseline-v${version}`;
+              targetRef = process.env.INPUT_TARGET_REF || process.env.DEFAULT_BRANCH || 'main';
+              targetSha = resolveTargetSha(targetRef);
+            } else if (context.eventName === 'push') {
+              tag = context.ref.replace('refs/tags/', '');
+              version = tag.replace(/^prompt-baseline-v/, '');
+              targetRef = tag;
+              targetSha = context.sha;
+            } else {
+              core.setFailed(`Unsupported baseline release event: ${context.eventName}`);
+              return;
+            }
+
+            if (!/^prompt-baseline-v\d+\.\d+\.\d+$/.test(tag)) {
+              core.setFailed(`Unsupported baseline prompt tag: ${tag}`);
+              return;
+            }
+
+            if (!fs.existsSync(sourcePath)) {
+              core.setFailed(`Prompt baseline source file not found: ${sourcePath}`);
+              return;
+            }
+
+            const assetBuffer = fs.readFileSync(sourcePath);
+            const sha256 = crypto.createHash('sha256').update(assetBuffer).digest('hex');
+            const title = `Prompt Baseline ${version}`;
+            const notes = [
+              'Baseline prompt artifact for compare evals.',
+              '',
+              `- Version: ${version}`,
+              `- Source Path: ${sourcePath}`,
+              `- Commit: ${targetSha}`,
+              `- SHA256: ${sha256}`,
+              `- Download URL: https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${tag}/${assetName}`,
+            ].join('\n');
+
+            core.info(`Publishing ${tag} from ${targetRef} at ${targetSha}`);
+
+            let release;
+            try {
+              const response = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              release = response.data;
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            if (release) {
+              if (!release.draft) {
+                core.setFailed(
+                  `Published baseline release ${tag} already exists. Published releases are immutable; publish a new semver version instead.`,
+                );
+                return;
+              }
+
+              if (release.target_commitish && release.target_commitish !== targetSha) {
+                core.setFailed(
+                  `Draft baseline release ${tag} already targets ${release.target_commitish}, not ${targetSha}. Refusing to retarget an existing version.`,
+                );
+                return;
+              }
+            } else {
+              const response = await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                target_commitish: targetSha,
+                name: title,
+                body: notes,
+                draft: true,
+                make_latest: 'false',
+              });
+              release = response.data;
+            }
+
+            const existingAsset = release.assets.find((asset) => asset.name === assetName);
+            if (existingAsset) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: existingAsset.id,
+              });
+            }
+
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              name: assetName,
+              data: assetBuffer,
+              headers: {
+                'content-length': assetBuffer.length,
+                'content-type': 'text/markdown; charset=utf-8',
+              },
+            });
+
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              tag_name: tag,
+              target_commitish: targetSha,
+              name: title,
+              body: notes,
+              draft: false,
+              make_latest: 'false',
+            });
