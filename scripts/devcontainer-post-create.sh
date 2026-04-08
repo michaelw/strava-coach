@@ -35,7 +35,7 @@ fi
 
 if ! command -v hugo >/dev/null 2>&1; then
   # renovate: datasource=github-releases depName=gohugoio/hugo extractVersion=^v(?<version>.*)$
-  HUGO_VERSION="0.160.0"
+  HUGO_VERSION="0.160.1"
   ARCH_RAW="$(uname -m)"
   case "$ARCH_RAW" in
     x86_64)        HUGO_ARCH="amd64" ;;
