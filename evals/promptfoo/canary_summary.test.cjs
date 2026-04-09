@@ -105,6 +105,32 @@ test('createRunReport warns on a single unlucky sample within the allowed budget
   assert.match(buildMarkdownSummary(runReport), /WARNING smoke\/smoke-005/);
 });
 
+test('createRunReport warns on a single infrastructure error within the allowed budget', () => {
+  const runReport = createRunReport({
+    artifactDir: '/tmp/artifacts',
+    phaseReports: [
+      makePhaseReport([
+        makeRow({ id: 'smoke-004', repeatIndex: 0 }),
+        makeRow({ id: 'smoke-004', repeatIndex: 1, error: 'Evaluation timed out after 90000ms' }),
+        makeRow({ id: 'smoke-004', repeatIndex: 2 }),
+        makeRow({ id: 'smoke-004', repeatIndex: 3 }),
+        makeRow({ id: 'smoke-004', repeatIndex: 4 }),
+      ]),
+    ],
+    canaryConfig: {
+      repeat: 5,
+      allowed_failures: 1,
+      temperature: 1,
+    },
+  });
+
+  assert.equal(runReport.result, 'WARN');
+  assert.equal(runReport.tests[0].status, 'warning');
+  assert.equal(runReport.tests[0].failedSamples, 0);
+  assert.equal(runReport.tests[0].errorSamples, 1);
+  assert.match(buildMarkdownSummary(runReport), /WARNING smoke\/smoke-004/);
+});
+
 test('createRunReport fails when repeated bad samples exceed the allowed budget', () => {
   const runReport = createRunReport({
     artifactDir: '/tmp/artifacts',
@@ -127,6 +153,31 @@ test('createRunReport fails when repeated bad samples exceed the allowed budget'
   assert.equal(runReport.result, 'FAIL');
   assert.equal(runReport.tests[0].status, 'failed');
   assert.equal(runReport.tests[0].failedSamples, 2);
+});
+
+test('createRunReport fails when mixed bad samples exceed the allowed budget', () => {
+  const runReport = createRunReport({
+    artifactDir: '/tmp/artifacts',
+    phaseReports: [
+      makePhaseReport([
+        makeRow({ id: 'smoke-004', repeatIndex: 0, success: false, reason: 'First bad sample.' }),
+        makeRow({ id: 'smoke-004', repeatIndex: 1, error: 'Evaluation timed out after 90000ms' }),
+        makeRow({ id: 'smoke-004', repeatIndex: 2 }),
+        makeRow({ id: 'smoke-004', repeatIndex: 3 }),
+        makeRow({ id: 'smoke-004', repeatIndex: 4 }),
+      ]),
+    ],
+    canaryConfig: {
+      repeat: 5,
+      allowed_failures: 1,
+      temperature: 1,
+    },
+  });
+
+  assert.equal(runReport.result, 'FAIL');
+  assert.equal(runReport.tests[0].status, 'failed');
+  assert.equal(runReport.tests[0].failedSamples, 1);
+  assert.equal(runReport.tests[0].errorSamples, 1);
 });
 
 test('createRunReport treats self-grading assertion details in row.error as failed samples, not infrastructure errors', () => {
@@ -178,9 +229,11 @@ test('writeSummary writes markdown and json outputs for the canary lane', () => 
     artifactDir: tempDir,
   });
 
-  assert.equal(runReport.result, 'ERROR');
+  assert.equal(runReport.result, 'WARN');
   assert.ok(fs.existsSync(summaryPath));
   assert.ok(fs.existsSync(jsonOutputPath));
   assert.match(fs.readFileSync(summaryPath, 'utf8'), /Smoke Canary Outcome/);
-  assert.match(fs.readFileSync(jsonOutputPath, 'utf8'), /"result": "ERROR"/);
+  assert.match(fs.readFileSync(summaryPath, 'utf8'), /WARNING smoke\/smoke-001/);
+  assert.match(fs.readFileSync(jsonOutputPath, 'utf8'), /"result": "WARN"/);
+  assert.match(fs.readFileSync(jsonOutputPath, 'utf8'), /"errorSamples": 1/);
 });

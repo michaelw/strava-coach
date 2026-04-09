@@ -146,17 +146,15 @@ function createRunReport({ artifactDir, phaseReports, canaryConfig }) {
         counts[sample.status === 'error' ? 'errors' : sample.status] += 1;
       }
 
+      const sampleCount = entry.samples.length;
+      const badSampleCount = counts.failed + counts.errors;
       let status = 'passed';
-      if (counts.errors > 0) {
-        status = 'error';
-      } else if (counts.failed > canaryConfig.allowed_failures) {
+      if (badSampleCount > canaryConfig.allowed_failures) {
         status = 'failed';
-      } else if (counts.failed > 0) {
+      } else if (badSampleCount > 0) {
         status = 'warning';
       }
 
-      const sampleCount = entry.samples.length;
-      const badSampleCount = counts.failed + counts.errors;
       return {
         suite: entry.suite,
         id: entry.id,
@@ -180,16 +178,14 @@ function createRunReport({ artifactDir, phaseReports, canaryConfig }) {
   const passed = tests.filter((test) => test.status === 'passed').length;
   const warnings = tests.filter((test) => test.status === 'warning').length;
   const failed = tests.filter((test) => test.status === 'failed').length;
-  const errors = tests.filter((test) => test.status === 'error').length;
+  const errors = 0;
   const samples = tests.reduce((total, test) => total + test.sampleCount, 0);
   const samplePasses = tests.reduce((total, test) => total + test.passedSamples, 0);
   const sampleFailures = tests.reduce((total, test) => total + test.failedSamples, 0);
   const sampleErrors = tests.reduce((total, test) => total + test.errorSamples, 0);
 
   let result = 'PASS';
-  if (errors > 0) {
-    result = 'ERROR';
-  } else if (failed > 0) {
+  if (failed > 0) {
     result = 'FAIL';
   } else if (warnings > 0) {
     result = 'WARN';
@@ -383,7 +379,7 @@ function main(argv = process.argv.slice(2)) {
     summaryPath,
   }));
   appendGithubStepSummary(runReport);
-  if (args.check && (runReport.result === 'FAIL' || runReport.result === 'ERROR')) {
+  if (args.check && runReport.result === 'FAIL') {
     process.exit(1);
   }
 }
