@@ -1,0 +1,33 @@
+description: Require a final coaching answer instead of request-line or fetch narration.
+vars:
+  athlete_profile: |
+    Runner wants a normal workout analysis and does not care about internal retrieval steps.
+  strava_data: |
+    A recent steady run is available with enough summary detail for coaching guidance.
+  user_query: |
+    Analyze my latest workout.
+assert:
+  - type: not-icontains-any
+    metric: format
+    value:
+      - GET /
+      - fetching
+      - I'll fetch
+      - I will fetch
+      - now fetching
+      - first I'll
+  - type: llm-rubric
+    metric: format
+    value: The response is a final user-facing coaching answer, not a transcript of internal retrieval steps, request lines, or procedural tool narration.
+  - type: llm-rubric
+    metric: actionability
+    value: The response still gives useful workout takeaways or a next-step recommendation rather than only refusing to narrate tool use.
+metadata:
+  id: smoke-006
+  suite: smoke
+  priority: critical
+  tags:
+    - output-shape
+    - regression
+    - narration
+  rationale: The coach should never answer with raw request lines or fetch-only narration instead of a coaching response.

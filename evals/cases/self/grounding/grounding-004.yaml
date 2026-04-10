@@ -16,9 +16,13 @@ assert:
     metric: grounding
     value:
       - I did not use any external data
+      - GET /
+      - fetching
+      - I'll fetch
+      - I will fetch
   - type: llm-rubric
     metric: format
-    value: The response clearly explains, in a user-understandable way, what Strava information it relied on.
+    value: The response clearly explains, in a user-understandable way, what Strava information it relied on, using plain-language disclosure rather than request-line or tool narration.
 metadata:
   id: grounding-004
   suite: grounding
