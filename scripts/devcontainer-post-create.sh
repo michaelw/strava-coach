@@ -29,7 +29,7 @@ esac
 
 if ! command -v task >/dev/null 2>&1; then
   # renovate: datasource=github-releases depName=go-task/task extractVersion=^v(?<version>.*)$
-  TASK_VERSION="3.49.1"
+  TASK_VERSION="3.50.0"
   sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin "v${TASK_VERSION}"
 fi
 
