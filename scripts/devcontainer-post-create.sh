@@ -29,13 +29,13 @@ esac
 
 if ! command -v task >/dev/null 2>&1; then
   # renovate: datasource=github-releases depName=go-task/task extractVersion=^v(?<version>.*)$
-  TASK_VERSION="3.49.1"
+  TASK_VERSION="3.53.1"
   sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin "v${TASK_VERSION}"
 fi
 
 if ! command -v hugo >/dev/null 2>&1; then
   # renovate: datasource=github-releases depName=gohugoio/hugo extractVersion=^v(?<version>.*)$
-  HUGO_VERSION="0.160.1"
+  HUGO_VERSION="0.165.0"
   ARCH_RAW="$(uname -m)"
   case "$ARCH_RAW" in
     x86_64)        HUGO_ARCH="amd64" ;;
