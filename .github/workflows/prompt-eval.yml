@@ -168,7 +168,7 @@ jobs:
         if: steps.decide.outputs.active == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "npm"
 
       - name: Set up ripgrep
@@ -248,7 +248,7 @@ jobs:
         if: steps.decide.outputs.active == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "npm"
 
       - name: Set up ripgrep
@@ -353,7 +353,7 @@ jobs:
         if: steps.decide.outputs.active == 'true'
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "npm"
 
       - name: Set up ripgrep
@@ -421,7 +421,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "npm"
 
       - name: Set up ripgrep
@@ -539,7 +539,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "npm"
 
       - name: Set up ripgrep
